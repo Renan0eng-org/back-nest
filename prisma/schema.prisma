@@ -36,6 +36,8 @@ model User {
   nivel_acesso   Nivel_Acesso @relation(fields: [nivelAcessoId], references: [idNivelAcesso])
   type           EnumUserType @default(PACIENTE)
 
+  fromAssigned   Form[] @relation("FormAssignedUsers")
+
   formResponses Response[]
 
   @@index([idUser])
@@ -79,6 +81,7 @@ model Form {
   description String?
   questions   Question[]
   responses   Response[]
+  assignedUsers  User[] @relation("FormAssignedUsers")
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 }

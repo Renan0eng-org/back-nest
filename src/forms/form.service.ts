@@ -7,6 +7,54 @@ import { SubmitResponseDto } from './dto/submit-response.dto';
 export class FormService {
     constructor(private prisma: PrismaService) { }
 
+    async getAssignedUsers(idForm: string) {
+        const form = await this.prisma.form.findUnique({
+            where: { idForm },
+            include: {
+                assignedUsers: {
+                    where: { type: 'PACIENTE' },
+                    select: {
+                        idUser: true,
+                        name: true,
+                        email: true,
+                        active: true,
+                    },
+                },
+            },
+        });
+
+        if (!form) throw new NotFoundException('Formulário não encontrado');
+
+        return form.assignedUsers;
+    }
+
+    async assignUsers(idForm: string, userIds: string[]) {
+        await this.prisma.form.update({
+            where: { 
+                idForm,
+            },
+            data: {
+                assignedUsers: {
+                    set: [], // limpa vínculos anteriores
+                },
+            },
+        });
+
+        if (userIds.length > 0) {
+            await this.prisma.form.update({
+                where: { idForm },
+                data: {
+                    assignedUsers: {
+                        connect: userIds.map((idUser) => ({ idUser })),
+                    },
+                },
+            });
+        }
+
+        return { success: true };
+    }
+
+
     async findAll() {
         const formsWithCount = await this.prisma.form.findMany({
             select: {
@@ -254,20 +302,25 @@ export class FormService {
 
     async findResponses(formId: string) {
         // Busca o formulário e suas respostas, incluindo o usuário que enviou
-        return this.prisma.form.findUnique({
+        const result = await this.prisma.form.findUnique({
             where: { idForm: formId },
-            select: {
-                idForm: true,
-                title: true,
+            include: {
                 responses: {
-                    select: {
-                        idResponse: true,
-                        submittedAt: true,
+                    include: {
                         user: {
                             select: {
                                 idUser: true,
                                 name: true,
                                 email: true,
+                            },
+                        },
+                        answers: {
+                            include: {
+                                question: {
+                                    include: {
+                                        options: true,
+                                    },
+                                },
                             },
                         },
                     },
@@ -276,6 +329,108 @@ export class FormService {
                     },
                 },
             },
+        })
+
+        
+        // calcula o score da resposta
+        return {
+            ...result,
+            responses: result?.responses.map(response => {
+            let totalScore = 0;
+
+            for (const answer of response.answers) {
+                const question = answer.question;
+
+                if (question.type === 'CHECKBOXES') {
+                    const selectedOptions = question.options.filter(opt =>
+                        answer.values.includes(opt.text)
+                    );
+
+                    for (const opt of selectedOptions) {
+                        totalScore += (opt.value || 0);
+                    }
+
+                } else if (question.type === 'MULTIPLE_CHOICE') {
+                    const selectedOption = question.options.find(opt =>
+                        opt.text === answer.value
+                    );
+
+                    if (selectedOption) {
+                        totalScore += (selectedOption.value || 0);
+                    }
+                }
+            }
+
+            return {
+                ...response,
+                totalScore,
+            };
+        })};
+    }
+
+    async findAllResponses() {
+        // Busca todas as respostas em todos os formulários
+        const result = await this.prisma.response.findMany({
+            include: {
+                form: {
+                    select: {
+                        idForm: true,
+                        title: true,
+                    },
+                },
+                user: {
+                    select: {
+                        idUser: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+                answers: {
+                    include: {
+                        question: {
+                            include: {
+                                options: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: {
+                submittedAt: 'desc',
+            },
+        });
+
+        // calcula o score da resposta
+        return result.map(response => {
+            let totalScore = 0;
+
+            for (const answer of response.answers) {
+                const question = answer.question;
+
+                if (question.type === 'CHECKBOXES') {
+                    const selectedOptions = question.options.filter(opt =>
+                        answer.values.includes(opt.text)
+                    );
+
+                    for (const opt of selectedOptions) {
+                        totalScore += (opt.value || 0);
+                    }
+
+                } else if (question.type === 'MULTIPLE_CHOICE') {
+                    const selectedOption = question.options.find(opt =>
+                        opt.text === answer.value
+                    );
+
+                    if (selectedOption) {
+                        totalScore += (selectedOption.value || 0);
+                    }
+                }
+            }
+
+            return {
+                ...response,
+                totalScore,
+            };
         });
     }
 
@@ -315,7 +470,7 @@ export class FormService {
 
         // --- 2. O CÁLCULO DO SCORE ---
         let totalScore = 0;
-        const answersWithScore:{
+        const answersWithScore: {
             idResponse: string;
             value: string | null;
             values: string[] | null;
@@ -393,4 +548,42 @@ export class FormService {
             totalScore: totalScore     // A SOMA TOTAL dos scores
         };
     }
+
+    async getMyForms(userId: string) {
+        // busca nome e id user e os forms atribuídos
+        const user = await this.prisma.user.findUnique({
+            where: { idUser: userId },
+            select: {
+                idUser: true,
+                name: true,
+                email: true,
+                fromAssigned: {
+                    select: {
+                        idForm: true,
+                        title: true,
+                        description: true,
+                        createdAt: true,
+                        updatedAt: true,
+                    },
+                },
+
+            },
+        });
+
+        return user;
+    }
+
+    async getUsersToAssign() {
+        const allUsers = await this.prisma.user.findMany({
+            where: { type: 'PACIENTE' },
+            select: {
+                idUser: true,
+                name: true,
+                email: true,
+            },
+        });
+
+        return allUsers;
+    }
+
 }
