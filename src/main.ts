@@ -10,8 +10,8 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe());
 
   app.enableCors({
-    origin: process.env.CORS || 'http://localhost:3000',
-    // origin: process.env.CORS || 'https://prefeitura.renannardi.com',
+    // origin: process.env.CORS || 'http://localhost:3000',
+    origin: process.env.CORS || 'https://prefeitura.renannardi.com',
     credentials: true,
   });
 
