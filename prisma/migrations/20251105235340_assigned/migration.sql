@@ -14,6 +14,3 @@ ALTER TABLE "public"."_FormAssignedUsers" ADD CONSTRAINT "_FormAssignedUsers_A_f
 
 -- AddForeignKey
 ALTER TABLE "public"."_FormAssignedUsers" ADD CONSTRAINT "_FormAssignedUsers_B_fkey" FOREIGN KEY ("B") REFERENCES "public"."User"("idUser") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- Inser data for aacess levels 
-

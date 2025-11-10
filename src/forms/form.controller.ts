@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Req, UnauthorizedException, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Req, UnauthorizedException, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Request } from 'express';
 import { AppTokenGuard } from 'src/auth/app-token.guard';
 import { AuthService } from 'src/auth/auth.service';
@@ -34,6 +34,11 @@ export class FormController {
     @UsePipes(new ValidationPipe({ whitelist: true }))
     update(@Param('id') id: string, @Body() dto: SaveFormDto) {
         return this.formService.update(id, dto);
+    }
+
+    @Delete(':id')
+    delete(@Param('id') id: string) {
+        return this.formService.delete(id);
     }
 
     @Post(':id/responses')
