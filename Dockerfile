@@ -19,9 +19,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-COPY --from=builder /app/dist ./dist
 COPY prisma ./prisma
+COPY --from=builder /app/dist ./dist
+
+RUN npx prisma generate
 
 EXPOSE 4000
-
 CMD ["node", "dist/main.js"]
