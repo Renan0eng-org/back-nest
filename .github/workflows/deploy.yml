@@ -21,13 +21,13 @@ jobs:
           docker build -t devnardi/back-prefeitura:latest .
           docker push devnardi/back-prefeitura:latest
 
-      - name: Atualizar container rodando
+      - name: Subindo novo container com variáveis
         run: |
-          echo "Removendo container antigo (se existir)..."
-          docker rm -f back-prefeitura || true
-
-          echo "Atualizando imagem..."
-          docker pull devnardi/back-prefeitura:latest
-
-          echo "Subindo novo container..."
-          docker run -d --name back-prefeitura -p 4000:4000 devnardi/back-prefeitura:latest
+            docker rm -f back-prefeitura || true
+            docker pull devnardi/back-prefeitura:latest
+            docker run -d \
+            --name back-prefeitura \
+            -p 4000:4000 \
+            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            -e JWT_ACCESS_SECRET="${{ secrets.JWT_ACCESS_SECRET }}" \
+            devnardi/back-prefeitura:latest
