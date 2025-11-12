@@ -23,12 +23,8 @@ jobs:
 
       - name: Atualizar container rodando
         run: |
-          CONTAINER_ID=$(docker ps -q --filter "name=back-prefeitura")
-          if [ -n "$CONTAINER_ID" ]; then
-            echo "Parando e removendo container atual..."
-            docker stop $CONTAINER_ID || true
-            docker rm $CONTAINER_ID || true
-          fi
+          echo "Removendo container antigo (se existir)..."
+          docker rm -f back-prefeitura || true
 
           echo "Atualizando imagem..."
           docker pull devnardi/back-prefeitura:latest
