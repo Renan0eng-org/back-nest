@@ -1,28 +1,37 @@
 name: Deploy Backend Prefeitura
 
 on:
-    push:
-        branches:
-            - main
+  push:
+    branches:
+      - main
 
 jobs:
-    deploy:
-        runs-on: self-hosted
-        steps:
-            - name: Checkout do código
-              uses: actions/checkout@v4
+  deploy:
+    runs-on: self-hosted
 
-            - name: Login no Docker Hub
-              run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
 
-            - name: Build e push da imagem
-              run: |
-                  docker build -t devnardi/back-prefeitura:latest .
-                  docker push devnardi/back-prefeitura:latest
+      - name: Login no Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
 
-            - name: Atualizar container rodando
-              run: |
-                  docker pull devnardi/back-prefeitura:latest
-                  docker stop back-prefeitura || true
-                  docker rm back-prefeitura || true
-                  docker run -d --name back-prefeitura -p 4000:4000 devnardi/back-prefeitura:latest
+      - name: Build e push da imagem
+        run: |
+          docker build -t devnardi/back-prefeitura:latest .
+          docker push devnardi/back-prefeitura:latest
+
+      - name: Atualizar container rodando
+        run: |
+          CONTAINER_ID=$(docker ps -q --filter "name=back-prefeitura")
+          if [ -n "$CONTAINER_ID" ]; then
+            echo "Parando e removendo container atual..."
+            docker stop $CONTAINER_ID || true
+            docker rm $CONTAINER_ID || true
+          fi
+
+          echo "Atualizando imagem..."
+          docker pull devnardi/back-prefeitura:latest
+
+          echo "Subindo novo container..."
+          docker run -d --name back-prefeitura -p 4000:4000 devnardi/back-prefeitura:latest
