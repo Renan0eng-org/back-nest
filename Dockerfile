@@ -6,6 +6,10 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+
+# Gera o client antes do build (necessário pro Nest compilar)
+RUN npx prisma generate
+
 RUN npm run build
 
 # Etapa 2 — Produção
@@ -18,9 +22,6 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY prisma ./prisma
 
-# Gera o cliente Prisma na imagem final
-RUN npx prisma generate
-
-EXPOSE 3000
+EXPOSE 4000
 
 CMD ["node", "dist/main.js"]
