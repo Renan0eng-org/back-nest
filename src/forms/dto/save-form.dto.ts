@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator';
 import { QuestionType } from 'generated/prisma';
 
 class OptionDto {
@@ -36,6 +36,7 @@ class QuestionDto {
 
 export class SaveFormDto {
   @IsString()
+  @MinLength(4, { message: 'O título deve ter no mínimo 4 caracteres' })
   title: string;
 
   @IsString()
@@ -46,6 +47,4 @@ export class SaveFormDto {
   @ValidateNested({ each: true })
   @Type(() => QuestionDto)
   questions: QuestionDto[];
-
-
 }
