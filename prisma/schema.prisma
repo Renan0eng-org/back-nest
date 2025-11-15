@@ -40,6 +40,9 @@ model User {
 
   formResponses Response[]
 
+  appointmentsDoctor Appointment[] @relation("AppointmentDoctor")
+  appointmentsPatient  Appointment[] @relation("AppointmentPatient")
+
   @@index([idUser])
   @@index([user_id_create])
   @@index([user_id_update])
@@ -116,10 +119,13 @@ model Response {
   form   Form   @relation(fields: [formId], references: [idForm], onDelete: Cascade)
   formId String
 
-  user   User?   @relation(fields: [userId], references: [idUser], onDelete: SetNull)
-  userId String?
+  user   User   @relation(fields: [userId], references: [idUser])
+  userId String
 
   answers Answer[]
+
+  // Appointments that reference this response (optional)
+  appointments Appointment[]
 
   @@index([formId])
   @@index([userId])
@@ -140,4 +146,32 @@ model Answer {
 
   @@index([responseId])
   @@index([questionId])
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model Appointment {
+  id               String            @id @default(cuid())
+  doctorId         String
+  patientId        String
+  responseId       String?
+  scheduledAt      DateTime
+  status           AppointmentStatus @default(PENDING)
+  notes            String?
+  totalScoreAtTime Int?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime?         @updatedAt
+
+  doctor   User     @relation("AppointmentDoctor", fields: [doctorId], references: [idUser])
+  patient  User      @relation("AppointmentPatient", fields: [patientId], references: [idUser])
+  response Response? @relation(fields: [responseId], references: [idResponse])
+
+  @@index([doctorId])
+  @@index([patientId])
+  @@index([scheduledAt])
 }

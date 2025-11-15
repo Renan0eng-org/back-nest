@@ -74,6 +74,7 @@ export class AcessoService {
                 email: true,
                 avatar: true,
                 active: true,
+                type: true,
                 nivelAcessoId: true,
                 nivel_acesso: {
                     select: {

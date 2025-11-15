@@ -235,7 +235,7 @@ export class FormService {
     async submitResponse(
         formId: string,
         submitResponseDto: SubmitResponseDto,
-        userId?: string,
+        userId: string,
     ) {
         const { answers } = submitResponseDto;
 
@@ -243,7 +243,7 @@ export class FormService {
             const newResponse = await tx.response.create({
                 data: {
                     form: { connect: { idForm: formId } },
-                    ...(userId && { user: { connect: { idUser: userId } } }),
+                    user: { connect: { idUser: userId } },
                 },
             });
 

@@ -43,8 +43,24 @@ export class FormController {
 
     @Post(':id/responses')
     @UsePipes(new ValidationPipe({ whitelist: true }))
-    submitResponse(@Param('id') id: string, @Body() dto: SubmitResponseDto) {
-        return this.formService.submitResponse(id, dto);
+    async submitResponse(@Param('id') id: string, @Body() dto: SubmitResponseDto, @Req() request: Request) {
+        const authHeader = request.headers.authorization
+        const refreshToken = request.cookies['refresh_token']
+
+        if (!authHeader && !refreshToken) throw new UnauthorizedException('Token não fornecido')
+        if (authHeader && !authHeader.startsWith('Bearer ')) {
+            throw new UnauthorizedException('Token malformado')
+        }
+
+        const tokenBearer = authHeader?.split(' ')[1]
+        const token = refreshToken || tokenBearer;
+
+        const dataToken = await this.authService.validateToken(token)
+        if (!dataToken) throw new UnauthorizedException('Token inválido')
+
+        const userId = dataToken.dataToken.sub
+
+        return this.formService.submitResponse(id, dto, userId);
     }
 
     @Get(':id/responses')
