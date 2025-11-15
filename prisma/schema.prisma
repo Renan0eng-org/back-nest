@@ -149,10 +149,10 @@ model Answer {
 }
 
 enum AppointmentStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-  COMPLETED
+  Pendente
+  Confirmado
+  Cancelado
+  Completo
 }
 
 model Appointment {
@@ -161,7 +161,7 @@ model Appointment {
   patientId        String
   responseId       String?
   scheduledAt      DateTime
-  status           AppointmentStatus @default(PENDING)
+  status           AppointmentStatus @default(Pendente)
   notes            String?
   totalScoreAtTime Int?
   createdAt        DateTime          @default(now())
