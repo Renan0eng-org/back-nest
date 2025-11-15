@@ -2,16 +2,34 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import * as cookieParser from 'cookie-parser';
+import * as dotenv from 'dotenv';
 import { AppModule } from './app.module';
+
+// Carrega variáveis de ambiente do arquivo .env (se existir)
+dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.useGlobalPipes(new ValidationPipe());
 
+  // Suporta uma ou várias origens separadas por vírgula na variável CORS
+  const corsEnv = process.env.CORS;
+  const defaultOrigin = 'https://prefeitura.renannardi.com';
+
+  const allowedOrigins = corsEnv
+    ? corsEnv.split(',').map((s) => s.trim()).filter(Boolean)
+    : [defaultOrigin];
+
+  console.log('CORS allowed origins:', allowedOrigins);
+
   app.enableCors({
-    // origin: process.env.CORS || 'http://localhost:3000',
-    origin: process.env.CORS || 'https://prefeitura.renannardi.com',
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      // requests sem origin (ex.: ferramentas de teste ou same-origin) são permitidos
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
+      return callback(new Error('Blocked by CORS'));
+    },
     credentials: true,
   });
 
