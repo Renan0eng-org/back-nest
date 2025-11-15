@@ -28,7 +28,7 @@ export class AppointmentsService {
       where: {
         doctorId: dto.doctorId,
         scheduledAt,
-        status: { in: [AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING] },
+        status: { in: [AppointmentStatus.Confirmado, AppointmentStatus.Pendente] },
       },
     });
     if (conflict) throw new BadRequestException('Conflito de horário: profissional já possui agendamento nesse horário');
@@ -97,6 +97,6 @@ export class AppointmentsService {
   }
 
   async remove(id: string) {
-    return this.prisma.appointment.update({ where: { id }, data: { status: AppointmentStatus.CANCELLED } });
+    return this.prisma.appointment.update({ where: { id }, data: { status: AppointmentStatus.Cancelado } });
   }
 }
