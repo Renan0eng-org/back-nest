@@ -2,12 +2,14 @@ import { Body, Controller, Delete, Get, Param, Post, Put, Req, UnauthorizedExcep
 import { Request } from 'express';
 import { AppTokenGuard } from 'src/auth/app-token.guard';
 import { AuthService } from 'src/auth/auth.service';
+import { Menu } from 'src/auth/menu.decorator';
 import { SaveFormDto } from './dto/save-form.dto';
 import { SubmitResponseDto } from './dto/submit-response.dto';
 import { FormService } from './form.service';
 
 @Controller('forms')
 @UseGuards(AppTokenGuard)
+@Menu('formulario')
 export class FormController {
     constructor(
         private readonly formService: FormService,
@@ -53,9 +55,13 @@ export class FormController {
         }
 
         const tokenBearer = authHeader?.split(' ')[1]
-        const token = refreshToken || tokenBearer;
+        const token = tokenBearer || refreshToken;
 
-        const dataToken = await this.authService.validateToken(token)
+        if (!token) throw new UnauthorizedException('Token inválido')
+
+        const dataToken = await this.authService.validateToken(token, {
+            type: tokenBearer ? 'access' : 'refresh',
+        })
         if (!dataToken) throw new UnauthorizedException('Token inválido')
 
         const userId = dataToken.dataToken.sub
@@ -64,31 +70,37 @@ export class FormController {
     }
 
     @Get(':id/responses')
+    @Menu('respostas')
     findResponses(@Param('id') id: string) {
         return this.formService.findResponses(id);
     }
 
     @Get('/responses/list')
+    @Menu('respostas')
     findAllResponses() {
         return this.formService.findAllResponses();
     }
 
     @Get('response/:responseId')
+    @Menu('respostas')
     findResponseDetail(@Param('responseId') id: string) {
         return this.formService.findResponseDetail(id);
     }
 
     @Get('/users/toAssign')
+    @Menu('atribuir-usuarios')
     getUsersToAssign() {
         return this.formService.getUsersToAssign();
     }
 
     @Get(':id/assigned')
+    @Menu('atribuir-usuarios')
     getAssignedUsers(@Param('id') id: string) {
         return this.formService.getAssignedUsers(id);
     }
 
     @Post(':id/assign')
+    @Menu('atribuir-usuarios')
     assignUsers(
         @Param('id') id: string,
         @Body('userIds') userIds: string[],
@@ -108,9 +120,13 @@ export class FormController {
 
         const tokenBearer = authHeader?.split(' ')[1]
 
-        const token = refreshToken || tokenBearer;
+        const token = tokenBearer || refreshToken;
 
-        const dataToken = await this.authService.validateToken(token)
+        if (!token) throw new UnauthorizedException('Token inválido')
+
+        const dataToken = await this.authService.validateToken(token, {
+            type: tokenBearer ? 'access' : 'refresh',
+        })
 
         if (!dataToken) throw new UnauthorizedException('Token inválido')
 

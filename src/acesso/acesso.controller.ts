@@ -1,10 +1,12 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import { Menu } from 'src/auth/menu.decorator';
 import { RefreshTokenGuard } from 'src/auth/refresh-token.guard';
 import { AcessoService } from './acesso.service';
 import { CreateMenuAcessoDto, CreateNivelAcessoDto, UpdateMenuAcessoDto, UpdateNivelAcessoDto, UpdateNivelMenusDto, UpdateUserNivelDto } from './dto/acesso.dto';
 import { UpdateUserStatusDto } from './dto/update-user.dto';
 
 @Controller('admin/acesso')
+@Menu('acesso')
 export class AcessoController {
     constructor(private readonly acessoService: AcessoService) { }
 
@@ -84,6 +86,7 @@ export class AcessoController {
 
     @Patch('users/:id/status')
     @UseGuards(RefreshTokenGuard)
+    @Menu('ativacao-usuarios')
     updateUserStatus(
         @Param('id') id: string,
         @Body() data: UpdateUserStatusDto, 

@@ -5,6 +5,7 @@ import { DatabaseModule } from '../database/database.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { MenuPermissionGuard } from './menu-permission.guard';
 import { RefreshTokenGuard } from './refresh-token.guard';
 
 @Module({
@@ -19,7 +20,10 @@ import { RefreshTokenGuard } from './refresh-token.guard';
   providers: [
     AuthService,
     JwtStrategy,
-    RefreshTokenGuard
+    RefreshTokenGuard,
+    // Menu permission guard (used globally from main.ts)
+    // Provided here so it can inject AuthService and Reflector
+    MenuPermissionGuard
   ],
   controllers: [AuthController],
   exports: [
@@ -29,3 +33,4 @@ import { RefreshTokenGuard } from './refresh-token.guard';
   ]
 })
 export class AuthModule {}
+

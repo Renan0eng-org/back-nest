@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import * as cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
 import { AppModule } from './app.module';
+import { MenuPermissionGuard } from './auth/menu-permission.guard';
 
 // Carrega variáveis de ambiente do arquivo .env (se existir)
 dotenv.config();
@@ -34,6 +35,11 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+
+  // Register menu permission guard globally so routes annotated with @Menu(...) are enforced.
+  // The guard will skip routes marked with @Public()
+  const menuGuard = app.get(MenuPermissionGuard);
+  app.useGlobalGuards(menuGuard);
 
   await app.listen(process.env.PORT || 4000);
 }
