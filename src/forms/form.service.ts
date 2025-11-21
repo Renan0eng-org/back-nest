@@ -103,6 +103,17 @@ export class FormService {
                         responses: true,
                     },
                 },
+                questions: {
+                    select: {
+                        formId: true,
+                        idQuestion: true,
+                        text: true,
+                        type: true,
+                        required: true,
+                        order: true,
+                        options: true,
+                    },
+                },
             },
             orderBy: {
                 updatedAt: 'desc',
@@ -115,6 +126,7 @@ export class FormService {
             description: form.description,
             updatedAt: form.updatedAt,
             responses: form._count.responses,
+            questions: form.questions,
         }));
 
         return forms;
