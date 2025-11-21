@@ -31,4 +31,11 @@ export class AppointmentsController {
   remove(@Param('id') id: string) {
     return this.service.remove(id);
   }
+
+  // lista os usuarios Profissional
+  @Get('users/professional')
+  findProfessionalUsers() {
+    return this.service.findProfessionalUsers();
+  }
+
 }

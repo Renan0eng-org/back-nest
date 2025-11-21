@@ -15,7 +15,7 @@ export class AppointmentsService {
 
     // checar doctor existe e é profissional
     const doctor = await this.prisma.user.findUnique({ where: { idUser: dto.doctorId } });
-    if (!doctor || (doctor as any).type !== 'USUARIO') throw new NotFoundException('Profissional não encontrado');
+    if (!doctor || (doctor as any).type !== 'USUARIO' && (doctor as any).type !== 'MEDICO') throw new NotFoundException('Profissional não encontrado');
 
     // patientId é obrigatório no schema atual; validar presença e existência
     if (!dto.patientId) throw new BadRequestException('patientId é obrigatório');
@@ -98,5 +98,16 @@ export class AppointmentsService {
 
   async remove(id: string) {
     return this.prisma.appointment.update({ where: { id }, data: { status: AppointmentStatus.Cancelado } });
+  }
+
+  async findProfessionalUsers() {
+    const professionals = await this.prisma.user.findMany({
+      where: { 
+        type: { in: ['MEDICO', 'USUARIO'] },
+        active: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+    return professionals;
   }
 }
