@@ -17,10 +17,10 @@ export class AuthService {
 
     async createUser(data: Prisma.UserCreateInput) {
         const user = await this.prisma.user.create({
-            data: {
-                ...data,
+            data: ({
+                ...(data as any),
                 password: await this.cryptPassword(data.password),
-            },
+            } as any),
         });
         return user;
     }
@@ -43,7 +43,12 @@ export class AuthService {
     }
 
     async validateUser(email: string, password: string) {
-        const user = await this.prisma.user.findUnique({ where: { email } });
+        const user = await this.prisma.user.findUnique({
+            where: {
+                email,
+                type: { not: { in: ['PACIENTE'] } }
+            }
+        });
 
         if (!user) throw new UnauthorizedException('Email ou senha inválidos');
 
@@ -172,5 +177,42 @@ export class AuthService {
             }
             throw new UnauthorizedException('Token inválido');
         }
+    }
+
+    async updateUser(id: string, data: Partial<{
+        name: string;
+        birthDate?: string | Date;
+        cpf: string;
+        sexo?: string;
+        unidadeSaude?: string;
+        medicamentos?: string;
+        exames?: boolean;
+        examesDetalhes?: string;
+        alergias?: string;
+        phone?: string;
+        cep?: string;
+        avatar?: string;
+    }>) {
+        const updateData: any = {};
+        if (data.name) updateData.name = data.name;
+        if (data.birthDate) updateData.birthDate = new Date(data.birthDate as any);
+        if (typeof data.cpf !== 'undefined') updateData.cpf = data.cpf;
+        if (typeof data.sexo !== 'undefined') updateData.sexo = data.sexo;
+        if (typeof data.unidadeSaude !== 'undefined') updateData.unidadeSaude = data.unidadeSaude;
+        if (typeof data.medicamentos !== 'undefined') updateData.medicamentos = data.medicamentos;
+        if (typeof data.exames !== 'undefined') updateData.exames = data.exames;
+        if (typeof data.examesDetalhes !== 'undefined') updateData.examesDetalhes = data.examesDetalhes;
+        if (typeof data.alergias !== 'undefined') updateData.alergias = data.alergias;
+        if (typeof data.phone !== 'undefined') updateData.phone = data.phone;
+        if (typeof data.cep !== 'undefined') updateData.cep = data.cep;
+        if (typeof data.avatar !== 'undefined') updateData.avatar = data.avatar;
+
+        const user = await this.prisma.user.update({
+            where: { idUser: id },
+            data: updateData,
+        });
+
+        const { password, ...rest } = user as any;
+        return rest;
     }
 }

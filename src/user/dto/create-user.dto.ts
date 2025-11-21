@@ -20,8 +20,7 @@ export class CreateUserDto {
     avatar?: string;
 
     @IsString()
-    @IsOptional()
-    cpf?: string;
+    cpf: string;
 
     @IsString()
     @IsOptional()

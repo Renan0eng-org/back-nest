@@ -83,6 +83,7 @@ export class AcessoService {
                     }
                 }
             },
+            where: { type: { not: { in: ['ADMIN'] } } },
             orderBy: { name: 'asc' },
         });
     }

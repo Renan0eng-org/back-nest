@@ -21,6 +21,11 @@ export class FormController {
         return this.formService.findAll();
     }
 
+    @Get('screenings')
+    findScreenings() {
+        return this.formService.findScreenings();
+    }
+
     @Post()
     @UsePipes(new ValidationPipe({ whitelist: true }))
     create(@Body() dto: SaveFormDto) {

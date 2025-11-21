@@ -49,4 +49,10 @@ INSERT INTO "Menu_Acesso" ("nome", "slug", "visualizar", "criar", "editar", "exc
 SELECT 'Atribuição de Usuários', 'atribuir-usuarios', TRUE, TRUE, TRUE, TRUE, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM "Menu_Acesso" WHERE "slug" = 'atribuir-usuarios');
 
+-- paciente
+
+INSERT INTO "Menu_Acesso" ("nome", "slug", "visualizar", "criar", "editar", "excluir", "relatorio")
+SELECT 'Pacientes', 'paciente', TRUE, TRUE, TRUE, TRUE, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM "Menu_Acesso" WHERE "slug" = 'paciente');
+
 COMMIT;

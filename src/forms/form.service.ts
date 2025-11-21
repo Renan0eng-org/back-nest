@@ -87,6 +87,39 @@ export class FormService {
         return forms;
     }
 
+    async findScreenings() {
+        const formsWithCount = await this.prisma.form.findMany({
+            where: {
+                active: true,
+                isScreening: true,
+            },
+            select: {
+                idForm: true,
+                title: true,
+                description: true,
+                updatedAt: true,
+                _count: {
+                    select: {
+                        responses: true,
+                    },
+                },
+            },
+            orderBy: {
+                updatedAt: 'desc',
+            },
+        });
+
+        const forms = formsWithCount.map(form => ({
+            idForm: form.idForm,
+            title: form.title,
+            description: form.description,
+            updatedAt: form.updatedAt,
+            responses: form._count.responses,
+        }));
+
+        return forms;
+    }
+
     async findOne(idForm: string) {
         const form = await this.prisma.form.findUnique({
             where: { idForm, active: true },

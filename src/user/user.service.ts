@@ -47,7 +47,6 @@ export class UserService {
             }
         }
 
-
         const hashedPassword = await bcrypt.hash(password, 10);
 
         try {
@@ -75,6 +74,8 @@ export class UserService {
     findAll() {
         return this.prisma.user.findMany({
             select: userSelect, // Usa a seleção
+            // Retorna apenas usuários que não são do tipo ADMIN ou PACIENTE
+            where: { type: { not: { in: ['ADMIN', 'PACIENTE'] } } },
             orderBy: { name: 'asc' },
         });
     }

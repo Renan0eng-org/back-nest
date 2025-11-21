@@ -13,6 +13,7 @@ DECLARE
     'formulario',
     'respostas',
     'atribuir-usuarios'
+    'paciente'
   ];
 BEGIN
   -------------------------------------------------------------------
@@ -51,7 +52,7 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM "User" WHERE "email" = 'renan.nardi.dev@gmail.com') THEN
     INSERT INTO "User" (
       "idUser", "name", "email", "password",
-      "active", "nivelAcessoId", "type"
+      "active", "nivelAcessoId", "type", "cpf"
     ) VALUES (
       'renan_admin_2',
       'Renan Nardi',
@@ -59,7 +60,8 @@ BEGIN
       '$2b$10$Ja7sEVfh1ifyYYv8hJOD/eNhw2l60oH/YYY7uYvKF3AT9chdkxFkG',
       true,
       admin_id,
-      'ADMIN'
+      'ADMIN',
+      '118.402.239-95'
     );
   ELSE
     UPDATE "User"

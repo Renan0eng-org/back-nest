@@ -13,7 +13,14 @@ datasource db {
 enum EnumUserType {
   ADMIN
   USUARIO
+  MEDICO
   PACIENTE
+}
+
+enum Sex {
+  FEMININO
+  MASCULINO
+  OUTRO
 }
 
 model User {
@@ -22,7 +29,7 @@ model User {
   avatar         String?
   email          String       @unique
   password       String
-  cpf            String?      @unique
+  cpf            String       @unique
   cep            String?
   phone          String?
   user_id_create Int?
@@ -35,6 +42,13 @@ model User {
   nivelAcessoId  Int          @default(1)
   nivel_acesso   Nivel_Acesso @relation(fields: [nivelAcessoId], references: [idNivelAcesso])
   type           EnumUserType @default(PACIENTE)
+  birthDate      DateTime? 
+  sexo           Sex? 
+  unidadeSaude   String? 
+  medicamentos   String? 
+  exames         Boolean?  @default(false)
+  examesDetalhes String?
+  alergias       String?
 
   fromAssigned   Form[] @relation("FormAssignedUsers")
 
@@ -87,6 +101,7 @@ model Form {
   assignedUsers  User[] @relation("FormAssignedUsers")
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  isScreening Boolean    @default(false)
   active      Boolean    @default(true)
 }
 

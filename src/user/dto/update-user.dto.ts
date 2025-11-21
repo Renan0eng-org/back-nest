@@ -21,8 +21,7 @@ export class UpdateUserDto {
     avatar?: string;
 
     @IsString()
-    @IsOptional()
-    cpf?: string;
+    cpf: string;
 
     @IsString()
     @IsOptional()
