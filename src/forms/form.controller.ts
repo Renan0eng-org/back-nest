@@ -48,6 +48,21 @@ export class FormController {
         return this.formService.delete(id);
     }
 
+    @Post(':id/activate-screening')
+    activateScreening(@Param('id') id: string) {
+        return this.formService.setScreening(id, true);
+    }
+
+    @Post(':id/deactivate-screening')
+    deactivateScreening(@Param('id') id: string) {
+        return this.formService.setScreening(id, false);
+    }
+
+    @Post(':id/toggle-screening')
+    toggleScreening(@Param('id') id: string) {
+        return this.formService.toggleScreening(id);
+    }
+
     @Post(':id/responses')
     @UsePipes(new ValidationPipe({ whitelist: true }))
     async submitResponse(@Param('id') id: string, @Body() dto: SubmitResponseDto, @Req() request: Request) {

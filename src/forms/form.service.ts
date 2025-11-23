@@ -77,6 +77,7 @@ export class FormService {
                 title: true,
                 description: true,
                 updatedAt: true,
+                isScreening: true,
                 _count: {
                     select: {
                         responses: true,
@@ -93,6 +94,7 @@ export class FormService {
             title: form.title,
             description: form.description,
             updatedAt: form.updatedAt,
+            isScreening: form.isScreening,
             responses: form._count.responses,
         }));
 
@@ -299,6 +301,30 @@ export class FormService {
                 active: false
             },
         });
+    }
+
+    async setScreening(idForm: string, value: boolean) {
+        const form = await this.prisma.form.findUnique({ where: { idForm, active: true } });
+        if (!form) throw new NotFoundException('Formulário não encontrado');
+
+        const updated = await this.prisma.form.update({
+            where: { idForm },
+            data: { isScreening: value },
+        });
+
+        return { idForm: updated.idForm, isScreening: updated.isScreening };
+    }
+
+    async toggleScreening(idForm: string) {
+        const form = await this.prisma.form.findUnique({ where: { idForm, active: true }, select: { isScreening: true } });
+        if (!form) throw new NotFoundException('Formulário não encontrado');
+
+        const updated = await this.prisma.form.update({
+            where: { idForm },
+            data: { isScreening: !form.isScreening },
+        });
+
+        return { idForm: updated.idForm, isScreening: updated.isScreening };
     }
 
     async submitResponse(
