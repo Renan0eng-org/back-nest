@@ -32,9 +32,9 @@ model User {
   cpf            String       @unique
   cep            String?
   phone          String?
-  user_id_create Int?
-  user_id_update Int?
-  user_id_delete Int?
+  user_id_create String?
+  user_id_update String?
+  user_id_delete String?
   dt_delete      DateTime?
   created        DateTime     @default(now())
   updated        DateTime?    @updatedAt

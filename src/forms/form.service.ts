@@ -54,6 +54,18 @@ export class FormService {
         return { success: true };
     }
 
+    async unassignUsers(idForm: string, userIds: string[]) {
+        await this.prisma.form.update({
+            where: { idForm },
+            data: {
+                assignedUsers: {
+                    disconnect: userIds.map((idUser) => ({ idUser })),
+                },
+            },
+        });
+
+        return { success: true };
+    }
 
     async findAll() {
         const formsWithCount = await this.prisma.form.findMany({
@@ -192,6 +204,18 @@ export class FormService {
                 where: { formId: formId },
             });
 
+            for (const oldQuestion of oldQuestions) {
+                const exists = questions.find(q => q.idQuestion === oldQuestion.idQuestion);
+                if (!exists) {
+                    await tx.option.deleteMany({
+                        where: { questionId: oldQuestion.idQuestion },
+                    });
+                    await tx.question.delete({
+                        where: { idQuestion: oldQuestion.idQuestion },
+                    });
+                }
+            }
+
             for (const question of questions) {
                 const oldQuestion = oldQuestions.find(q => q.idQuestion === question.idQuestion);
                 if (oldQuestion) {
@@ -304,6 +328,80 @@ export class FormService {
             });
 
             return newResponse;
+        });
+    }
+
+    async updateResponse(
+        formId: string,
+        submitResponseDto: SubmitResponseDto,
+        userId: string,
+        responseId: string,
+    ) {
+        const { answers } = submitResponseDto;
+
+        return this.prisma.$transaction(async (tx) => {
+            const existingResponse = await tx.response.findFirst({
+                where: {
+                    formId,
+                    userId,
+                    idResponse: responseId,
+                },
+            });
+
+            if (!existingResponse) {
+                throw new Error('Response not found');
+            }
+
+            await tx.answer.deleteMany({
+                where: {
+                    responseId: responseId,
+                },
+            });
+
+            const answersToCreate = answers.map((answer) => ({
+                responseId: responseId,
+                questionId: answer.questionId,
+                value: answer.value,
+                values: answer.values,
+            }));
+
+            await tx.answer.createMany({
+                data: answersToCreate,
+            });
+
+            return existingResponse;
+        });
+    }
+
+    async deleteResponse(
+        formId: string,
+        userId: string,
+        responseId: string,
+    ) {
+        return this.prisma.$transaction(async (tx) => {
+            const existingResponse = await tx.response.findFirst({
+                where: {
+                    idResponse: responseId,
+                },
+            });
+
+            if (!existingResponse) {
+                throw new Error('Response not found');
+            }
+            
+            await tx.response.delete({
+                where: {
+                    idResponse: responseId,
+                },
+            });
+
+            await tx.answer.deleteMany({
+                where: {
+                    responseId: responseId,
+                },
+            });
+
+            return { success: true };
         });
     }
 

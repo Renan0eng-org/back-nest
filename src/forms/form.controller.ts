@@ -51,6 +51,66 @@ export class FormController {
     @Post(':id/responses')
     @UsePipes(new ValidationPipe({ whitelist: true }))
     async submitResponse(@Param('id') id: string, @Body() dto: SubmitResponseDto, @Req() request: Request) {
+
+        // se tiver dto userId, usar ele, senão validar token
+        if (!dto.userId) {
+            const authHeader = request.headers.authorization
+            const refreshToken = request.cookies['refresh_token']
+
+            if (!authHeader && !refreshToken) throw new UnauthorizedException('Token não fornecido')
+            if (authHeader && !authHeader.startsWith('Bearer ')) {
+                throw new UnauthorizedException('Token malformado')
+            }
+
+            const tokenBearer = authHeader?.split(' ')[1]
+            const token = tokenBearer || refreshToken;
+
+            if (!token) throw new UnauthorizedException('Token inválido')
+
+            const dataToken = await this.authService.validateToken(token, {
+                type: tokenBearer ? 'access' : 'refresh',
+            })
+            if (!dataToken) throw new UnauthorizedException('Token inválido')
+
+            const userId = dataToken.dataToken.sub
+            return this.formService.submitResponse(id, dto, userId);
+        }
+
+        return this.formService.submitResponse(id, dto, dto.userId);
+    }
+
+    @Put(':id/responses/:responseId')
+    @UsePipes(new ValidationPipe({ whitelist: true }))
+    async updateResponse(@Param('id') id: string, @Param('responseId') responseId: string, @Body() dto: SubmitResponseDto, @Req() request: Request) {
+        // se tiver dto userId, usar ele, senão validar token
+        if (!dto.userId) {
+            const authHeader = request.headers.authorization
+            const refreshToken = request.cookies['refresh_token']
+
+            if (!authHeader && !refreshToken) throw new UnauthorizedException('Token não fornecido')
+            if (authHeader && !authHeader.startsWith('Bearer ')) {
+                throw new UnauthorizedException('Token malformado')
+            }
+
+            const tokenBearer = authHeader?.split(' ')[1]
+            const token = tokenBearer || refreshToken;
+
+            if (!token) throw new UnauthorizedException('Token inválido')
+
+            const dataToken = await this.authService.validateToken(token, {
+                type: tokenBearer ? 'access' : 'refresh',
+            })
+            if (!dataToken) throw new UnauthorizedException('Token inválido')
+
+            const userId = dataToken.dataToken.sub
+            return this.formService.updateResponse(id, dto, userId, responseId);
+        }
+
+        return this.formService.updateResponse(id, dto, dto.userId, responseId);
+    }
+
+    @Delete(':id/responses/:responseId')
+    async deleteResponse(@Param('id') id: string, @Param('responseId') responseId: string, @Req() request: Request) {
         const authHeader = request.headers.authorization
         const refreshToken = request.cookies['refresh_token']
 
@@ -70,8 +130,7 @@ export class FormController {
         if (!dataToken) throw new UnauthorizedException('Token inválido')
 
         const userId = dataToken.dataToken.sub
-
-        return this.formService.submitResponse(id, dto, userId);
+        return this.formService.deleteResponse(id, userId, responseId);
     }
 
     @Get(':id/responses')
@@ -113,7 +172,18 @@ export class FormController {
         return this.formService.assignUsers(id, userIds);
     }
 
+    // remove o usuário da atribuição
+    @Post(':id/unassign')
+    @Menu('atribuir-usuarios')
+    unassignUsers(
+        @Param('id') id: string,
+        @Body('userIds') userIds: string[],
+    ) {
+        return this.formService.unassignUsers(id, userIds);
+    }
+
     @Get('/user/my')
+    @Menu('')
     async getMyForms(@Req() request: Request) {
         const authHeader = request.headers.authorization
         const refreshToken = request.cookies['refresh_token']

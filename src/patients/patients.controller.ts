@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Req, UnauthorizedException, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Request } from 'express';
+import { AuthService } from 'src/auth/auth.service';
 import { Menu } from 'src/auth/menu.decorator';
 import { RefreshTokenGuard } from 'src/auth/refresh-token.guard';
 import { RegisterPatientDto } from './dto/register-patient.dto';
@@ -9,7 +11,7 @@ import { PatientsService } from './patients.service';
 @UseGuards(RefreshTokenGuard)
 @Menu('paciente')
 export class PatientsController {
-    constructor(private readonly patientsService: PatientsService) { }
+    constructor(private readonly patientsService: PatientsService, private readonly authService: AuthService) { }
 
     @Get()
     findAll() {
@@ -50,7 +52,24 @@ export class PatientsController {
     }
 
     @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.patientsService.remove(id);
+    async remove(@Param('id') id: string, @Req() req: Request) {
+        let token: string | undefined = undefined;
+        let tokenType: 'access' | 'refresh' | 'any' = 'any';
+
+        if (req.headers.authorization?.startsWith('Bearer ')) {
+            token = req.headers.authorization.split(' ')[1];
+            tokenType = 'access';
+        } else if ((req as any).cookies && (req as any).cookies['refresh_token']) {
+            token = (req as any).cookies['refresh_token'];
+            tokenType = 'refresh';
+        }
+
+        if (!token) throw new UnauthorizedException('Token não fornecido.');
+
+        const validation = await this.authService.validateToken(token, { type: tokenType }) as any;
+        const dataToken = validation?.dataToken || {};
+        const deleterId = dataToken.sub || dataToken.idUser || dataToken.id;
+
+        return this.patientsService.remove(id, deleterId);
     }
 }

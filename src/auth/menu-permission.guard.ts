@@ -16,13 +16,15 @@ export class MenuPermissionGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    const requiredSlug = this.reflector.getAllAndOverride<string>(MENU_SLUG_KEY, [
+    const requiredMeta = this.reflector.getAllAndOverride<string | string[]>(MENU_SLUG_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
 
     // If no slug is provided, allow by default (backwards compatible).
-    if (!requiredSlug) return true;
+    if (!requiredMeta) return true;
+
+    const requiredSlugs = Array.isArray(requiredMeta) ? requiredMeta : [requiredMeta];
 
     const req: Request = context.switchToHttp().getRequest();
 
@@ -45,7 +47,7 @@ export class MenuPermissionGuard implements CanActivate {
     const user = await this.authService.findUserById(validated.dataToken.sub);
 
     const menus = user?.nivel_acesso?.menus || [];
-    const allowed = menus.some((m: any) => m.slug === requiredSlug);
+    const allowed = menus.some((m: any) => requiredSlugs.includes(m.slug));
 
     if (!allowed) throw new ForbiddenException('Acesso negado para este recurso.');
 

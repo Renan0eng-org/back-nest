@@ -42,11 +42,31 @@ export class AuthService {
         return userWithoutPassword;
     }
 
-    async validateUser(email: string, password: string) {
+    async validateUserWeb(email: string, password: string) {
         const user = await this.prisma.user.findUnique({
             where: {
                 email,
                 type: { not: { in: ['PACIENTE'] } }
+            }
+        });
+
+        if (!user) throw new UnauthorizedException('Email ou senha inválidos');
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) throw new UnauthorizedException('Email ou senha inválidos');
+
+        const isActive = user.active;
+        if (!isActive) throw new UnauthorizedException('Usuário inativo');
+
+        const { password: _, ...userWithoutPassword } = user;
+
+        return userWithoutPassword;
+    }
+
+    async validateUser(email: string, password: string) {
+        const user = await this.prisma.user.findUnique({
+            where: {
+                email,
             }
         });
 

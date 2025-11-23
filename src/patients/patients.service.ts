@@ -37,14 +37,89 @@ export class PatientsService {
 
     async findAll() {
         return this.prisma.user.findMany({
-            where: { type: 'PACIENTE' },
+            where: { type: 'PACIENTE', dt_delete: null },
             select: patientSelect,
             orderBy: { name: 'asc' },
         });
     }
 
     async findOne(id: string) {
-        const user = await this.prisma.user.findUnique({ where: { idUser: id }, select: patientSelect });
+        const user = await this.prisma.user.findFirst({
+            where: { idUser: id, dt_delete: null },
+            select: {
+                // basic user fields
+                ...patientSelect,
+
+                // forms assigned to this patient (so the UI can show which forms can be answered/edited)
+                fromAssigned: {
+                    where: { active: true },
+                    select: {
+                        idForm: true,
+                        title: true,
+                        description: true,
+                        isScreening: true,
+                        createdAt: true,
+                        updatedAt: true,
+                        questions: {
+                            orderBy: { order: 'asc' },
+                            select: {
+                                idQuestion: true,
+                                text: true,
+                                type: true,
+                                required: true,
+                                order: true,
+                                options: {
+                                    orderBy: { order: 'asc' },
+                                    select: {
+                                        idOption: true,
+                                        text: true,
+                                        value: true,
+                                        order: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+
+                // responses previously submitted by this patient
+                formResponses: {
+                    select: {
+                        idResponse: true,
+                        submittedAt: true,
+                        form: {
+                            select: {
+                                idForm: true,
+                                title: true,
+                                isScreening: true,
+                            },
+                        },
+                        answers: {
+                            select: {
+                                idAnswer: true,
+                                value: true,
+                                values: true,
+                                question: {
+                                    select: {
+                                        idQuestion: true,
+                                        text: true,
+                                        type: true,
+                                        options: {
+                                            select: {
+                                                idOption: true,
+                                                text: true,
+                                                value: true,
+                                                order: true,
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
         if (!user) throw new NotFoundException('Paciente não encontrado');
         return user;
     }
@@ -76,10 +151,9 @@ export class PatientsService {
         }
     }
 
-    async remove(id: string) {
-        // Soft delete: set active false
+    async remove(id: string, idUser: string) {
         try {
-            await this.prisma.user.update({ where: { idUser: id }, data: { active: false } });
+            await this.prisma.user.update({ where: { idUser: id }, data: { user_id_delete: idUser, dt_delete: new Date() } });
             return { success: true };
         } catch (e) {
             throw new BadRequestException('Não foi possível deletar paciente');

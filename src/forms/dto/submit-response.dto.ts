@@ -23,4 +23,8 @@ export class SubmitResponseDto {
     @ValidateNested({ each: true })
     @Type(() => AnswerDto)
     answers: AnswerDto[];
+
+    @IsString()
+    @IsOptional()
+    userId?: string;
 }
