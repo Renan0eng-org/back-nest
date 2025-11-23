@@ -13,6 +13,7 @@ export class LogsService {
     statusCode?: number;
     createdFrom?: string | Date;
     createdTo?: string | Date;
+    seen?: boolean;
   }) {
     const page = opts.page && opts.page > 0 ? opts.page : 1;
     const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
@@ -42,6 +43,11 @@ export class LogsService {
       }
     }
 
+    // seen filter (true|false)
+    if (typeof opts.seen !== 'undefined') {
+      where.seen = opts.seen;
+    }
+
     const [total, data] = await Promise.all([
       this.prisma.errorLog.count({ where }),
       this.prisma.errorLog.findMany({
@@ -68,5 +74,12 @@ export class LogsService {
     const log = await this.prisma.errorLog.findUnique({ where: { id } });
     if (!log) throw new NotFoundException('Log não encontrado');
     return log;
+  }
+
+  async markAsSeen(id: string) {
+    const log = await this.prisma.errorLog.findUnique({ where: { id } });
+    if (!log) throw new NotFoundException('Log não encontrado');
+    const updated = await this.prisma.errorLog.update({ where: { id }, data: { seen: !log.seen } });
+    return { id: updated.id, seen: updated.seen };
   }
 }
