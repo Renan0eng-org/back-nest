@@ -57,6 +57,8 @@ model User {
   appointmentsDoctor Appointment[] @relation("AppointmentDoctor")
   appointmentsPatient  Appointment[] @relation("AppointmentPatient")
 
+  errorLogs     ErrorLog[]
+
   @@index([idUser])
   @@index([user_id_create])
   @@index([user_id_update])
@@ -189,4 +191,23 @@ model Appointment {
   @@index([doctorId])
   @@index([patientId])
   @@index([scheduledAt])
+}
+
+model ErrorLog {
+  id         String   @id @default(cuid())
+  message    String
+  stack      String?
+  method     String?
+  route      String?
+  statusCode Int?
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [idUser])
+  userEmail  String?
+  file       String?
+  line       Int?
+  column     Int?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }

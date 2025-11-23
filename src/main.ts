@@ -5,6 +5,7 @@ import * as cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
 import { AppModule } from './app.module';
 import { MenuPermissionGuard } from './auth/menu-permission.guard';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 // Carrega variáveis de ambiente do arquivo .env (se existir)
 dotenv.config();
@@ -40,6 +41,14 @@ async function bootstrap() {
   // The guard will skip routes marked with @Public()
   const menuGuard = app.get(MenuPermissionGuard);
   app.useGlobalGuards(menuGuard);
+
+  // Register global exception filter (persists errors to DB)
+  try {
+    const allExceptionsFilter = app.get(AllExceptionsFilter);
+    app.useGlobalFilters(allExceptionsFilter);
+  } catch (e) {
+    console.warn('Could not register AllExceptionsFilter via DI:', e?.message || e);
+  }
 
   await app.listen(process.env.PORT || 4000);
 }
