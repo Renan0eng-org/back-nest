@@ -65,6 +65,7 @@ export class FormController {
     }
 
     @Post(':id/responses')
+    @Menu('')
     @UsePipes(new ValidationPipe({ whitelist: true }))
     async submitResponse(@Param('id') id: string, @Body() dto: SubmitResponseDto, @Req() request: Request) {
 
