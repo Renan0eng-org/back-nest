@@ -106,6 +106,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // write to DB (best-effort)
     try {
+      // capture network/client details
+      const ip = req.ip || (req.headers['x-forwarded-for'] as string) || (req.socket && (req.socket as any).remoteAddress) || null;
+      const forwardedFor = (req.headers['x-forwarded-for'] as string) || null;
+      const userAgent = (req.headers['user-agent'] as string) || null;
+
+      // attach some of these to metadata too (best-effort)
+      metadata.client = {
+        ip,
+        forwardedFor,
+        userAgent,
+        protocol: req.protocol,
+        httpVersion: (req as any).httpVersion,
+        remoteAddress: (req.socket && (req.socket as any).remoteAddress) || null,
+        secure: (req as any).secure || false,
+      };
+
       await (this.prisma as any).errorLog.create({
         data: {
           message: typeof message === 'string' ? message : JSON.stringify(message),
@@ -115,6 +131,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
           statusCode: status,
           userId: userId,
           userEmail: userEmail,
+          ip: ip,
+          forwardedFor: forwardedFor,
+          userAgent: userAgent,
           file: file,
           line: line,
           column: column,

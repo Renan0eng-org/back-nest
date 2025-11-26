@@ -203,6 +203,9 @@ model ErrorLog {
   userId     String?
   user       User?    @relation(fields: [userId], references: [idUser])
   userEmail  String?
+  ip         String?
+  userAgent  String?
+  forwardedFor String?
   seen       Boolean  @default(false)
   file       String?
   line       Int?

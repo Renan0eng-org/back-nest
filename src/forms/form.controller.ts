@@ -33,6 +33,7 @@ export class FormController {
     }
 
     @Get(':id')
+    @Menu('')
     findOne(@Param('id') id: string) {
         return this.formService.findOne(id);
     }
