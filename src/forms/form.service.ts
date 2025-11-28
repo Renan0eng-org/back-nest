@@ -497,6 +497,73 @@ export class FormService {
         };
     }
 
+    async findResponse(formId: string, responseId: string) {
+        // fetch response directly in the same shape as findAllResponses
+        const response = await this.prisma.response.findUnique({
+            where: { idResponse: responseId },
+            include: {
+                form: {
+                    select: {
+                        idForm: true,
+                        title: true,
+                    },
+                },
+                user: {
+                    select: {
+                        idUser: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+                answers: {
+                    include: {
+                        question: {
+                            include: {
+                                options: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!response || response.form?.idForm !== formId) {
+            throw new NotFoundException(`Resposta com ID ${responseId} não encontrada para o formulário ${formId}.`);
+        }
+
+        let totalScore = 0;
+
+        for (const answer of response.answers) {
+            const question = answer.question;
+
+            if (question.type === 'CHECKBOXES') {
+                const selectedOptions = question.options.filter(opt =>
+                    answer.values.includes(opt.text)
+                );
+
+                for (const opt of selectedOptions) {
+                    totalScore += (opt.value || 0);
+                }
+
+            } else if (question.type === 'MULTIPLE_CHOICE') {
+                const selectedOption = question.options.find(opt =>
+                    opt.text === answer.value
+                );
+
+                if (selectedOption) {
+                    totalScore += (selectedOption.value || 0);
+                }
+            }
+        }
+
+        return {
+            ...response,
+            totalScore,
+        };
+
+    }
+
+
     async findAllResponses() {
         const result = await this.prisma.response.findMany({
             where: {

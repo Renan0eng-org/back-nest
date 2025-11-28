@@ -155,6 +155,12 @@ export class FormController {
     findResponses(@Param('id') id: string) {
         return this.formService.findResponses(id);
     }
+    
+    @Get(':id/responses/:responseId')
+    @Menu('respostas')
+    findResponse(@Param('id') id: string, @Param('responseId') responseId: string) {
+        return this.formService.findResponse(id, responseId);
+    }
 
     @Get('/responses/list')
     @Menu('respostas')

@@ -13,8 +13,12 @@ export class AppointmentsService {
     if (isNaN(scheduledAt.getTime()) || scheduledAt <= new Date())
       throw new BadRequestException('scheduledAt inválido ou deve ser uma data no futuro');
 
+    // normalize doctor/professional id (controller may supply professionalId)
+    const doctorId = (dto as any).doctorId || (dto as any).professionalId;
+    if (!doctorId) throw new BadRequestException('doctorId/professionalId é obrigatório');
+
     // checar doctor existe e é profissional
-    const doctor = await this.prisma.user.findUnique({ where: { idUser: dto.doctorId } });
+    const doctor = await this.prisma.user.findUnique({ where: { idUser: doctorId } });
     if (!doctor || (doctor as any).type !== 'USUARIO' && (doctor as any).type !== 'MEDICO') throw new NotFoundException('Profissional não encontrado');
 
     // patientId é obrigatório no schema atual; validar presença e existência
@@ -26,7 +30,7 @@ export class AppointmentsService {
     // checagem de conflito simples (slot-based por igualdade)
     const conflict = await this.prisma.appointment.findFirst({
       where: {
-        doctorId: dto.doctorId,
+        doctorId: doctorId,
         scheduledAt,
         status: { in: [AppointmentStatus.Confirmado, AppointmentStatus.Pendente] },
       },
@@ -45,7 +49,7 @@ export class AppointmentsService {
     const created = await this.prisma.$transaction(async (tx) => {
       const appt = await tx.appointment.create({
         data: {
-          doctorId: dto.doctorId,
+          doctorId: doctorId,
           patientId: dto.patientId!,
           responseId: dto.responseId ?? null,
           scheduledAt,
@@ -69,6 +73,7 @@ export class AppointmentsService {
     if (query.from || query.to) where.scheduledAt = {};
     if (query.from) where.scheduledAt.gte = new Date(query.from);
     if (query.to) where.scheduledAt.lte = new Date(query.to);
+    where.status = { not: AppointmentStatus.Cancelado };
 
     return this.prisma.appointment.findMany({
       where,

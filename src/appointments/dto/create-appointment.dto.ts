@@ -1,8 +1,13 @@
-import { IsISO8601, IsOptional, IsString } from 'class-validator';
+import { IsISO8601, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 export class CreateAppointmentDto {
+  @ValidateIf(o => !o.professionalId)
   @IsString()
-  doctorId: string;
+  doctorId?: string;
+
+  @ValidateIf(o => !o.doctorId)
+  @IsString()
+  professionalId?: string;
 
   @IsString()
   patientId: string;

@@ -54,6 +54,7 @@ model User {
 
   formResponses Response[]
 
+  appointmentsProfessional Appointment[] @relation("AppointmentProfessional")
   appointmentsDoctor Appointment[] @relation("AppointmentDoctor")
   appointmentsPatient  Appointment[] @relation("AppointmentPatient")
 
@@ -174,7 +175,8 @@ enum AppointmentStatus {
 
 model Appointment {
   id               String            @id @default(cuid())
-  doctorId         String
+  professionalId   String?
+  doctorId         String?
   patientId        String
   responseId       String?
   scheduledAt      DateTime
@@ -184,7 +186,8 @@ model Appointment {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime?         @updatedAt
 
-  doctor   User     @relation("AppointmentDoctor", fields: [doctorId], references: [idUser])
+  professional User?     @relation("AppointmentProfessional", fields: [professionalId], references: [idUser])
+  doctor   User?     @relation("AppointmentDoctor", fields: [doctorId], references: [idUser])
   patient  User      @relation("AppointmentPatient", fields: [patientId], references: [idUser])
   response Response? @relation(fields: [responseId], references: [idResponse])
 

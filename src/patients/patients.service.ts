@@ -52,7 +52,7 @@ export class PatientsService {
 
                 // forms assigned to this patient (so the UI can show which forms can be answered/edited)
                 fromAssigned: {
-                    where: { active: true },
+                    where: { active: true, isScreening: true },
                     select: {
                         idForm: true,
                         title: true,
