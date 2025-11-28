@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { Menu } from 'src/auth/menu.decorator';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 
 @Controller('appointments')
+@Menu('agendamentos')
 export class AppointmentsController {
   constructor(private readonly service: AppointmentsService) {}
 
@@ -15,6 +17,11 @@ export class AppointmentsController {
   @Get("")
   findAll(@Query() query: any) {
     return this.service.findAll(query);
+  }
+
+  @Get('referrals')
+  findReferrals(@Query() query: any) {
+    return this.service.findReferrals(query);
   }
 
   @Get(':id')

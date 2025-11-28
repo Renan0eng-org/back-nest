@@ -12,8 +12,9 @@ DECLARE
     'gerenciar-usuarios',
     'formulario',
     'respostas',
-    'atribuir-usuarios'
-    'paciente'
+    'atribuir-usuarios',
+    'paciente',
+    'agendamentos'
   ];
 BEGIN
   -------------------------------------------------------------------

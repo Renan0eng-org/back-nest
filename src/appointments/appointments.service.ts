@@ -6,7 +6,7 @@ import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 
 @Injectable()
 export class AppointmentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async create(dto: CreateAppointmentDto) {
     const scheduledAt = new Date(dto.scheduledAt);
@@ -49,7 +49,8 @@ export class AppointmentsService {
     const created = await this.prisma.$transaction(async (tx) => {
       const appt = await tx.appointment.create({
         data: {
-          doctorId: doctorId,
+          doctorId: dto.doctorId ?? null,
+          professionalId: dto.professionalId ?? null,
           patientId: dto.patientId!,
           responseId: dto.responseId ?? null,
           scheduledAt,
@@ -65,21 +66,76 @@ export class AppointmentsService {
     return created;
   }
 
-  findAll(query: any) {
+  async findAll(query: any) {
     const where: any = {};
-    if (query.doctorId) where.doctorId = query.doctorId;
-    if (query.patientId) where.patientId = query.patientId;
-    if (query.status) where.status = query.status;
-    if (query.from || query.to) where.scheduledAt = {};
-    if (query.from) where.scheduledAt.gte = new Date(query.from);
-    if (query.to) where.scheduledAt.lte = new Date(query.to);
-    where.status = { not: AppointmentStatus.Cancelado };
 
-    return this.prisma.appointment.findMany({
-      where,
-      include: { doctor: true, patient: true, response: true },
-      orderBy: { scheduledAt: 'asc' },
-    });
+    if (query.patientId) where.patientId = query.patientId;
+
+    if (query.status) {
+      where.status = query.status;
+    } else {
+      where.status = { not: AppointmentStatus.Cancelado };
+    }
+
+    if (query.from || query.to) {
+      where.scheduledAt = {};
+      if (query.from) where.scheduledAt.gte = new Date(query.from);
+      if (query.to) where.scheduledAt.lte = new Date(query.to);
+      if (Object.keys(where.scheduledAt).length === 0) delete where.scheduledAt;
+    }
+
+    if (query.doctorId) {
+      where.doctorId = query.doctorId;
+    } else {
+      where.doctorId = { not: null };
+    }
+
+    try {
+      return await this.prisma.appointment.findMany({
+        where,
+        include: { doctor: true, patient: true, response: true },
+        orderBy: { scheduledAt: 'asc' },
+      });
+    } catch (error) {
+      console.error(error);
+      throw new BadRequestException('Erro ao buscar agendamentos');
+    }
+  }
+
+  async findReferrals(query: any) {
+    const where: any = {};
+
+    if (query.patientId) where.patientId = query.patientId;
+
+    if (query.status) {
+      where.status = query.status;
+    } else {
+      where.status = { not: AppointmentStatus.Cancelado };
+    }
+
+    if (query.from || query.to) {
+      where.scheduledAt = {};
+      if (query.from) where.scheduledAt.gte = new Date(query.from);
+      if (query.to) where.scheduledAt.lte = new Date(query.to);
+      if (Object.keys(where.scheduledAt).length === 0) delete where.scheduledAt;
+    }
+
+    if (query.professionalId) {
+      where.professionalId = query.professionalId;
+    } else {
+      where.professionalId = { not: null };
+    }
+
+    try {
+      return await this.prisma.appointment.findMany({
+        where,
+        include: { professional: true, patient: true, response: true },
+        orderBy: { scheduledAt: 'asc' },
+      });
+    } catch (error) {
+      console.error(error);
+      throw new BadRequestException('Erro ao buscar agendamentos');
+    }
   }
 
   async findOne(id: string) {
@@ -107,7 +163,7 @@ export class AppointmentsService {
 
   async findProfessionalUsers() {
     const professionals = await this.prisma.user.findMany({
-      where: { 
+      where: {
         type: { in: ['MEDICO', 'USUARIO'] },
         active: true,
       },
