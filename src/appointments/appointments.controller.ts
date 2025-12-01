@@ -5,9 +5,9 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 
 @Controller('appointments')
-@Menu('agendamentos')
+@Menu('agendamento')
 export class AppointmentsController {
-  constructor(private readonly service: AppointmentsService) {}
+  constructor(private readonly service: AppointmentsService) { }
 
   @Post("")
   create(@Body() dto: CreateAppointmentDto) {
@@ -19,6 +19,7 @@ export class AppointmentsController {
     return this.service.findAll(query);
   }
 
+  @Menu('encaminhamento')
   @Get('referrals')
   findReferrals(@Query() query: any) {
     return this.service.findReferrals(query);

@@ -61,4 +61,10 @@ INSERT INTO "Menu_Acesso" ("nome", "slug", "visualizar", "criar", "editar", "exc
 SELECT 'Agendamentos', 'agendamentos', TRUE, TRUE, TRUE, TRUE, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM "Menu_Acesso" WHERE "slug" = 'agendamento');
 
+-- encaminhamentos
+
+INSERT INTO "Menu_Acesso" ("nome", "slug", "visualizar", "criar", "editar", "excluir", "relatorio")
+SELECT 'Encaminhamentos', 'encaminhamentos', TRUE, TRUE, TRUE, TRUE, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM "Menu_Acesso" WHERE "slug" = 'encaminhamento');
+
 COMMIT;

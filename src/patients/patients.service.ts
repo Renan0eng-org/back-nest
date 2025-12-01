@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Prisma } from 'generated/prisma';
 import { AuthService } from 'src/auth/auth.service';
 import { PrismaService } from 'src/database/prisma.service';
+import { RegisterPatientDto } from './dto/register-patient.dto';
 
 const patientSelect = Prisma.validator<Prisma.UserSelect>()({
     idUser: true,
@@ -124,7 +125,7 @@ export class PatientsService {
         return user;
     }
 
-    async create(data: any) {
+    async create(data: RegisterPatientDto) {
         try {
             const createData = {
                 ...(data as any),
@@ -132,12 +133,35 @@ export class PatientsService {
                 type: 'PACIENTE',
             } as any;
 
+            // busca pelo cpf e retorna falando se ja existe um usuario com esse cpf
+            if (data.cpf) {
+                const existingCpf = await this.prisma.user.findFirst({
+                    where: { cpf: data.cpf },
+                    select: { idUser: true },
+                });
+                if (existingCpf) {
+                    // erro 422
+                    throw new UnprocessableEntityException('Já existe um paciente com este CPF');
+                }
+            }
+
             const created = await this.prisma.user.create({
                 data: createData,
                 select: patientSelect,
             });
             return created;
         } catch (e) {
+
+            if (e instanceof UnprocessableEntityException) {
+                throw e;
+            }
+            // valida se não é um erro de unique constraint
+            if (e instanceof Prisma.PrismaClientKnownRequestError) {
+                if (e.code === 'P2002') {
+                    const target = (e.meta && (e.meta.target as string[]).join(', ')) || 'campo único';
+                    throw new BadRequestException(`Já existe um paciente com este(s) ${target}`);
+                }
+            }
             throw new BadRequestException('Não foi possível criar paciente');
         }
     }
