@@ -15,14 +15,18 @@ export class AppointmentsController {
   }
 
   @Get("")
-  findAll(@Query() query: any) {
-    return this.service.findAll(query);
+  findAll(@Query() query: any, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    const p = page ? parseInt(page, 10) : undefined;
+    const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+    return this.service.findAll(query, p || ps ? { page: p, pageSize: ps } : undefined as any);
   }
 
   @Menu('encaminhamento')
   @Get('referrals')
-  findReferrals(@Query() query: any) {
-    return this.service.findReferrals(query);
+  findReferrals(@Query() query: any, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    const p = page ? parseInt(page, 10) : undefined;
+    const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+    return this.service.findReferrals(query, p || ps ? { page: p, pageSize: ps } : undefined as any);
   }
 
   @Get(':id')
@@ -42,8 +46,10 @@ export class AppointmentsController {
 
   // lista os usuarios Profissional
   @Get('users/professional')
-  findProfessionalUsers() {
-    return this.service.findProfessionalUsers();
+  findProfessionalUsers(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    const p = page ? parseInt(page, 10) : undefined;
+    const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+    return this.service.findProfessionalUsers(p || ps ? { page: p, pageSize: ps } : undefined as any);
   }
 
 }

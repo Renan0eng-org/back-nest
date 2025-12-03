@@ -66,43 +66,62 @@ export class AppointmentsService {
     return created;
   }
 
-  async findAll(query: any) {
+  async findAll(query: any, opts?: { page?: number; pageSize?: number }) {
     const where: any = {};
 
-    if (query.patientId) where.patientId = query.patientId;
+    if (query?.patientId) where.patientId = query.patientId;
 
-    if (query.status) {
+    if (query?.status) {
       where.status = query.status;
     } else {
       where.status = { not: AppointmentStatus.Cancelado };
     }
 
-    if (query.from || query.to) {
+    if (query?.from || query?.to) {
       where.scheduledAt = {};
       if (query.from) where.scheduledAt.gte = new Date(query.from);
       if (query.to) where.scheduledAt.lte = new Date(query.to);
       if (Object.keys(where.scheduledAt).length === 0) delete where.scheduledAt;
     }
 
-    if (query.doctorId) {
+    if (query?.doctorId) {
       where.doctorId = query.doctorId;
     } else {
-      where.doctorId = { not: null };
+      // use top-level NOT to avoid Prisma runtime issues with `not: null`
+      where.NOT = { doctorId: null };
     }
 
     try {
-      return await this.prisma.appointment.findMany({
-        where,
-        include: { doctor: true, patient: true, response: true },
-        orderBy: { scheduledAt: 'asc' },
-      });
+      if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+        return await this.prisma.appointment.findMany({
+          where,
+          include: { doctor: true, patient: true, response: true },
+          orderBy: { scheduledAt: 'asc' },
+        });
+      }
+
+      const page = opts.page && opts.page > 0 ? opts.page : 1;
+      const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
+
+      const [total, data] = await Promise.all([
+        this.prisma.appointment.count({ where }),
+        this.prisma.appointment.findMany({
+          where,
+          include: { doctor: true, patient: true, response: true },
+          orderBy: { scheduledAt: 'asc' },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+      ]);
+
+      return { total, page, pageSize, data };
     } catch (error) {
       console.error(error);
       throw new BadRequestException('Erro ao buscar agendamentos');
     }
   }
 
-  async findReferrals(query: any) {
+  async findReferrals(query: any, opts?: { page?: number; pageSize?: number }) {
     const where: any = {};
 
     if (query.patientId) where.patientId = query.patientId;
@@ -120,18 +139,36 @@ export class AppointmentsService {
       if (Object.keys(where.scheduledAt).length === 0) delete where.scheduledAt;
     }
 
-    if (query.professionalId) {
+    if (query?.professionalId) {
       where.professionalId = query.professionalId;
     } else {
-      where.professionalId = { not: null };
+      where.NOT = { professionalId: null };
     }
 
     try {
-      return await this.prisma.appointment.findMany({
-        where,
-        include: { professional: true, patient: true, response: true },
-        orderBy: { scheduledAt: 'asc' },
-      });
+      if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+        return await this.prisma.appointment.findMany({
+          where,
+          include: { professional: true, patient: true, response: true },
+          orderBy: { scheduledAt: 'asc' },
+        });
+      }
+
+      const page = opts.page && opts.page > 0 ? opts.page : 1;
+      const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
+
+      const [total, data] = await Promise.all([
+        this.prisma.appointment.count({ where }),
+        this.prisma.appointment.findMany({
+          where,
+          include: { professional: true, patient: true, response: true },
+          orderBy: { scheduledAt: 'asc' },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+      ]);
+
+      return { total, page, pageSize, data };
     } catch (error) {
       console.error(error);
       throw new BadRequestException('Erro ao buscar agendamentos');
@@ -161,14 +198,21 @@ export class AppointmentsService {
     return this.prisma.appointment.update({ where: { id }, data: { status: AppointmentStatus.Cancelado } });
   }
 
-  async findProfessionalUsers() {
-    const professionals = await this.prisma.user.findMany({
-      where: {
-        type: { in: ['MEDICO', 'USUARIO'] },
-        active: true,
-      },
-      orderBy: { name: 'asc' },
-    });
-    return professionals;
+  async findProfessionalUsers(opts?: { page?: number; pageSize?: number }) {
+    const where: any = { type: { in: ['MEDICO', 'USUARIO'] }, active: true };
+
+    if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+      return this.prisma.user.findMany({ where, orderBy: { name: 'asc' } });
+    }
+
+    const page = opts.page && opts.page > 0 ? opts.page : 1;
+    const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
+
+    const [total, data] = await Promise.all([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({ where, orderBy: { name: 'asc' }, skip: (page - 1) * pageSize, take: pageSize }),
+    ]);
+
+    return { total, page, pageSize, data };
   }
 }

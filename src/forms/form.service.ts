@@ -67,29 +67,55 @@ export class FormService {
         return { success: true };
     }
 
-    async findAll() {
-        const formsWithCount = await this.prisma.form.findMany({
-            where: {
-                active: true,
-            },
-            select: {
-                idForm: true,
-                title: true,
-                description: true,
-                updatedAt: true,
-                isScreening: true,
-                _count: {
-                    select: {
-                        responses: true,
-                    },
-                },
-            },
-            orderBy: {
-                updatedAt: 'desc',
-            },
-        });
+    async findAll(opts?: { page?: number; pageSize?: number }) {
+        const where: any = { active: true };
 
-        const forms = formsWithCount.map(form => ({
+        if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+            const formsWithCount = await this.prisma.form.findMany({
+                where,
+                select: {
+                    idForm: true,
+                    title: true,
+                    description: true,
+                    updatedAt: true,
+                    isScreening: true,
+                    _count: { select: { responses: true } },
+                },
+                orderBy: { updatedAt: 'desc' },
+            });
+
+            return formsWithCount.map(form => ({
+                idForm: form.idForm,
+                title: form.title,
+                description: form.description,
+                updatedAt: form.updatedAt,
+                isScreening: form.isScreening,
+                responses: form._count.responses,
+            }));
+        }
+
+        const page = opts.page && opts.page > 0 ? opts.page : 1;
+        const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
+
+        const [total, rows] = await Promise.all([
+            this.prisma.form.count({ where }),
+            this.prisma.form.findMany({
+                where,
+                select: {
+                    idForm: true,
+                    title: true,
+                    description: true,
+                    updatedAt: true,
+                    isScreening: true,
+                    _count: { select: { responses: true } },
+                },
+                orderBy: { updatedAt: 'desc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+        ]);
+
+        const data = rows.map(form => ({
             idForm: form.idForm,
             title: form.title,
             description: form.description,
@@ -98,43 +124,58 @@ export class FormService {
             responses: form._count.responses,
         }));
 
-        return forms;
+        return { total, page, pageSize, data };
     }
 
-    async findScreenings() {
-        const formsWithCount = await this.prisma.form.findMany({
-            where: {
-                active: true,
-                isScreening: true,
-            },
-            select: {
-                idForm: true,
-                title: true,
-                description: true,
-                updatedAt: true,
-                _count: {
-                    select: {
-                        responses: true,
-                    },
-                },
-                questions: {
-                    select: {
-                        formId: true,
-                        idQuestion: true,
-                        text: true,
-                        type: true,
-                        required: true,
-                        order: true,
-                        options: true,
-                    },
-                },
-            },
-            orderBy: {
-                updatedAt: 'desc',
-            },
-        });
+    async findScreenings(opts?: { page?: number; pageSize?: number }) {
+        const where: any = { active: true, isScreening: true };
 
-        const forms = formsWithCount.map(form => ({
+        if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+            const formsWithCount = await this.prisma.form.findMany({
+                where,
+                select: {
+                    idForm: true,
+                    title: true,
+                    description: true,
+                    updatedAt: true,
+                    _count: { select: { responses: true } },
+                    questions: { select: { formId: true, idQuestion: true, text: true, type: true, required: true, order: true, options: true } },
+                },
+                orderBy: { updatedAt: 'desc' },
+            });
+
+            return formsWithCount.map(form => ({
+                idForm: form.idForm,
+                title: form.title,
+                description: form.description,
+                updatedAt: form.updatedAt,
+                responses: form._count.responses,
+                questions: form.questions,
+            }));
+        }
+
+        const page = opts.page && opts.page > 0 ? opts.page : 1;
+        const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
+
+        const [total, rows] = await Promise.all([
+            this.prisma.form.count({ where }),
+            this.prisma.form.findMany({
+                where,
+                select: {
+                    idForm: true,
+                    title: true,
+                    description: true,
+                    updatedAt: true,
+                    _count: { select: { responses: true } },
+                    questions: { select: { formId: true, idQuestion: true, text: true, type: true, required: true, order: true, options: true } },
+                },
+                orderBy: { updatedAt: 'desc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+        ]);
+
+        const data = rows.map(form => ({
             idForm: form.idForm,
             title: form.title,
             description: form.description,
@@ -143,7 +184,7 @@ export class FormService {
             questions: form.questions,
         }));
 
-        return forms;
+        return { total, page, pageSize, data };
     }
 
     async findOne(idForm: string) {
@@ -379,9 +420,7 @@ export class FormService {
             }
 
             await tx.answer.deleteMany({
-                where: {
-                    responseId: responseId,
-                },
+                where: { responseId: responseId },
             });
 
             const answersToCreate = answers.map((answer) => ({
@@ -391,9 +430,7 @@ export class FormService {
                 values: answer.values,
             }));
 
-            await tx.answer.createMany({
-                data: answersToCreate,
-            });
+            await tx.answer.createMany({ data: answersToCreate });
 
             return existingResponse;
         });

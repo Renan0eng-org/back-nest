@@ -36,12 +36,32 @@ const patientSelect = Prisma.validator<Prisma.UserSelect>()({
 export class PatientsService {
     constructor(private prisma: PrismaService, private authService: AuthService) { }
 
-    async findAll() {
-        return this.prisma.user.findMany({
-            where: { type: 'PACIENTE', dt_delete: null },
-            select: patientSelect,
-            orderBy: { name: 'asc' },
-        });
+    async findAll(opts?: { page?: number; pageSize?: number }) {
+        if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+            return this.prisma.user.findMany({
+                where: { type: 'PACIENTE', dt_delete: null },
+                select: patientSelect,
+                orderBy: { name: 'asc' },
+            });
+        }
+
+        const page = opts.page && opts.page > 0 ? opts.page : 1;
+        const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
+
+        const where: any = { type: 'PACIENTE', dt_delete: null };
+
+        const [total, data] = await Promise.all([
+            this.prisma.user.count({ where }),
+            this.prisma.user.findMany({
+                where,
+                select: patientSelect,
+                orderBy: { name: 'asc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+        ]);
+
+        return { total, page, pageSize, data };
     }
 
     async findOne(id: string) {

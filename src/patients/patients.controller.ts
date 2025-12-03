@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Req, UnauthorizedException, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UnauthorizedException, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthService } from 'src/auth/auth.service';
 import { Menu } from 'src/auth/menu.decorator';
@@ -14,8 +14,10 @@ export class PatientsController {
     constructor(private readonly patientsService: PatientsService, private readonly authService: AuthService) { }
 
     @Get()
-    findAll() {
-        return this.patientsService.findAll();
+    findAll(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+        const p = page ? parseInt(page, 10) : undefined;
+        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+        return this.patientsService.findAll(p || ps ? { page: p, pageSize: ps } : undefined as any);
     }
 
     @Get(':id')

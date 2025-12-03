@@ -71,13 +71,33 @@ export class UserService {
         }
     }
 
-    findAll() {
-        return this.prisma.user.findMany({
-            select: userSelect, // Usa a seleção
-            // Retorna apenas usuários que não são do tipo ADMIN ou PACIENTE
-            where: { type: { not: { in: ['ADMIN', 'PACIENTE'] } } },
-            orderBy: { name: 'asc' },
-        });
+    async findAll(opts?: { page?: number; pageSize?: number }) {
+        // if pagination opts not provided, keep previous behavior (return array)
+        if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+            return this.prisma.user.findMany({
+                select: userSelect,
+                where: { type: { not: { in: ['ADMIN', 'PACIENTE'] } } },
+                orderBy: { name: 'asc' },
+            });
+        }
+
+        const page = opts.page && opts.page > 0 ? opts.page : 1;
+        const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
+
+        const where: any = { type: { not: { in: ['ADMIN', 'PACIENTE'] } } };
+
+        const [total, data] = await Promise.all([
+            this.prisma.user.count({ where }),
+            this.prisma.user.findMany({
+                where,
+                select: userSelect,
+                orderBy: { name: 'asc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+        ]);
+
+        return { total, page, pageSize, data };
     }
 
     async findOne(idUser: string) {

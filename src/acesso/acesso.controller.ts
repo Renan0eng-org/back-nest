@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { Menu } from 'src/auth/menu.decorator';
 import { RefreshTokenGuard } from 'src/auth/refresh-token.guard';
 import { AcessoService } from './acesso.service';
@@ -12,8 +12,10 @@ export class AcessoController {
 
     @Get('niveis')
     @UseGuards(RefreshTokenGuard)
-    findNiveis() {
-        return this.acessoService.findNiveisComMenus(); 
+    findNiveis(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+        const p = page ? parseInt(page, 10) : undefined;
+        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+        return this.acessoService.findNiveisComMenus(p || ps ? { page: p, pageSize: ps } : undefined as any);
     }
 
     @Post('niveis')
@@ -46,8 +48,10 @@ export class AcessoController {
 
     @Get('menus')
     @UseGuards(RefreshTokenGuard)
-    findMenus() {
-        return this.acessoService.findMenus();
+    findMenus(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+        const p = page ? parseInt(page, 10) : undefined;
+        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+        return this.acessoService.findMenus(p || ps ? { page: p, pageSize: ps } : undefined as any);
     }
 
     @Post('menus')
@@ -71,8 +75,10 @@ export class AcessoController {
 
     @Get('users')
     @UseGuards(RefreshTokenGuard)
-    findUsers() {
-        return this.acessoService.findUsers();
+    findUsers(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+        const p = page ? parseInt(page, 10) : undefined;
+        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+        return this.acessoService.findUsers(p || ps ? { page: p, pageSize: ps } : undefined as any);
     }
 
     @Patch('users/:id/nivel')

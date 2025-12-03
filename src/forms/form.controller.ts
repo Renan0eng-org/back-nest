@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Req, UnauthorizedException, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UnauthorizedException, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Request } from 'express';
 import { AppTokenGuard } from 'src/auth/app-token.guard';
 import { AuthService } from 'src/auth/auth.service';
@@ -17,13 +17,18 @@ export class FormController {
     ) { }
 
     @Get()
-    findAll() {
-        return this.formService.findAll();
+    findAll(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+        const p = page ? parseInt(page, 10) : undefined;
+        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+        return this.formService.findAll(p || ps ? { page: p, pageSize: ps } : undefined as any);
     }
 
     @Get('screenings')
-    findScreenings() {
-        return this.formService.findScreenings();
+    findScreenings(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+        const p = page ? parseInt(page, 10) : undefined;
+        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+        // formService.findScreenings will continue to work even if passed opts
+        return (this.formService as any).findScreenings ? (this.formService as any).findScreenings({ page: p, pageSize: ps }) : this.formService.findScreenings();
     }
 
     @Post()
@@ -152,8 +157,10 @@ export class FormController {
 
     @Get(':id/responses')
     @Menu('respostas')
-    findResponses(@Param('id') id: string) {
-        return this.formService.findResponses(id);
+    findResponses(@Param('id') id: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+        const p = page ? parseInt(page, 10) : undefined;
+        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+        return (this.formService as any).findResponses ? (this.formService as any).findResponses(id, { page: p, pageSize: ps }) : this.formService.findResponses(id);
     }
     
     @Get(':id/responses/:responseId')
@@ -164,8 +171,10 @@ export class FormController {
 
     @Get('/responses/list')
     @Menu('respostas')
-    findAllResponses() {
-        return this.formService.findAllResponses();
+    findAllResponses(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+        const p = page ? parseInt(page, 10) : undefined;
+        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+        return (this.formService as any).findAllResponses ? (this.formService as any).findAllResponses({ page: p, pageSize: ps }) : this.formService.findAllResponses();
     }
 
     @Get('response/:responseId')
@@ -176,14 +185,18 @@ export class FormController {
 
     @Get('/users/toAssign')
     @Menu('atribuir-usuarios')
-    getUsersToAssign() {
-        return this.formService.getUsersToAssign();
+    getUsersToAssign(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+        const p = page ? parseInt(page, 10) : undefined;
+        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+        return (this.formService as any).getUsersToAssign ? (this.formService as any).getUsersToAssign({ page: p, pageSize: ps }) : this.formService.getUsersToAssign();
     }
 
     @Get(':id/assigned')
     @Menu('atribuir-usuarios')
-    getAssignedUsers(@Param('id') id: string) {
-        return this.formService.getAssignedUsers(id);
+    getAssignedUsers(@Param('id') id: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+        const p = page ? parseInt(page, 10) : undefined;
+        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+        return (this.formService as any).getAssignedUsers ? (this.formService as any).getAssignedUsers(id, { page: p, pageSize: ps }) : this.formService.getAssignedUsers(id);
     }
 
     @Post(':id/assign')

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { Menu } from 'src/auth/menu.decorator';
 import { RefreshTokenGuard } from 'src/auth/refresh-token.guard';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -18,9 +18,12 @@ export class UserController {
 
     @Get()
     @UseGuards(RefreshTokenGuard)
-    findAll() {
-        const users = this.userService.findAll();
-        return users;
+    findAll(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+        const p = page ? parseInt(page, 10) : undefined;
+        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
+
+        // preserve backward compatibility: if no pagination provided, service returns array
+        return this.userService.findAll(p || ps ? { page: p, pageSize: ps } : undefined as any);
     }
 
     @Get(':id')

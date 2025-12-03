@@ -6,13 +6,21 @@ import { CreateMenuAcessoDto, CreateNivelAcessoDto, UpdateMenuAcessoDto, UpdateN
 export class AcessoService {
     constructor(private prisma: PrismaService) { }
 
-    findNiveisComMenus() {
-        return this.prisma.nivel_Acesso.findMany({
-            include: {
-                menus: true,
-            },
-            orderBy: { nome: 'asc' },
-        });
+    async findNiveisComMenus(opts?: { page?: number; pageSize?: number }) {
+        const where = {};
+        if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+            return this.prisma.nivel_Acesso.findMany({ include: { menus: true }, orderBy: { nome: 'asc' } });
+        }
+
+        const page = opts.page && opts.page > 0 ? opts.page : 1;
+        const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
+
+        const [total, data] = await Promise.all([
+            this.prisma.nivel_Acesso.count({ where }),
+            this.prisma.nivel_Acesso.findMany({ include: { menus: true }, orderBy: { nome: 'asc' }, skip: (page - 1) * pageSize, take: pageSize }),
+        ]);
+
+        return { total, page, pageSize, data };
     }
 
     createNivel(data: CreateNivelAcessoDto) {
@@ -43,10 +51,21 @@ export class AcessoService {
         });
     }
 
-    findMenus() {
-        return this.prisma.menu_Acesso.findMany({
-            orderBy: { nome: 'asc' },
-        });
+    async findMenus(opts?: { page?: number; pageSize?: number }) {
+        const where = {};
+        if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+            return this.prisma.menu_Acesso.findMany({ orderBy: { nome: 'asc' } });
+        }
+
+        const page = opts.page && opts.page > 0 ? opts.page : 1;
+        const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
+
+        const [total, data] = await Promise.all([
+            this.prisma.menu_Acesso.count({ where }),
+            this.prisma.menu_Acesso.findMany({ orderBy: { nome: 'asc' }, skip: (page - 1) * pageSize, take: pageSize }),
+        ]);
+
+        return { total, page, pageSize, data };
     }
 
     createMenu(data: CreateMenuAcessoDto) {
@@ -66,26 +85,32 @@ export class AcessoService {
         });
     }
 
-    findUsers() {
-        return this.prisma.user.findMany({
-            select: {
-                idUser: true,
-                name: true,
-                email: true,
-                avatar: true,
-                active: true,
-                type: true,
-                nivelAcessoId: true,
-                nivel_acesso: {
-                    select: {
-                        idNivelAcesso: true,
-                        nome: true,
-                    }
-                }
-            },
-            where: { type: { not: { in: ['ADMIN'] } }, dt_delete: null },
-            orderBy: { name: 'asc' },
-        });
+    async findUsers(opts?: { page?: number; pageSize?: number }) {
+        const where: any = { type: { not: { in: ['ADMIN'] } }, dt_delete: null };
+        const select = {
+            idUser: true,
+            name: true,
+            email: true,
+            avatar: true,
+            active: true,
+            type: true,
+            nivelAcessoId: true,
+            nivel_acesso: { select: { idNivelAcesso: true, nome: true } },
+        };
+
+        if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+            return this.prisma.user.findMany({ select, where, orderBy: { name: 'asc' } });
+        }
+
+        const page = opts.page && opts.page > 0 ? opts.page : 1;
+        const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
+
+        const [total, data] = await Promise.all([
+            this.prisma.user.count({ where }),
+            this.prisma.user.findMany({ select, where, orderBy: { name: 'asc' }, skip: (page - 1) * pageSize, take: pageSize }),
+        ]);
+
+        return { total, page, pageSize, data };
     }
 
     async updateUserNivel(idUser: string, nivelAcessoId: number) {
