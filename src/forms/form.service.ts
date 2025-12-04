@@ -67,10 +67,42 @@ export class FormService {
         return { success: true };
     }
 
-    async findAll(opts?: { page?: number; pageSize?: number }) {
+    async findAll(opts?: { page?: number; pageSize?: number; filters?: any }) {
+        const filters = opts?.filters;
+
         const where: any = { active: true };
 
+        if (filters) {
+            if (filters.title) {
+                where.title = { contains: filters.title, mode: 'insensitive' };
+            }
+            if (filters.description) {
+                where.description = { contains: filters.description, mode: 'insensitive' };
+            }
+            if (filters.from || filters.to) {
+                where.createdAt = {};
+                if (filters.from) {
+                    const fromDate = new Date(filters.from);
+                    if (!isNaN(fromDate.getTime())) where.createdAt.gte = fromDate;
+                }
+                if (filters.to) {
+                    const toDate = new Date(filters.to);
+                    if (!isNaN(toDate.getTime())) where.createdAt.lte = toDate;
+                }
+            }
+            if (typeof filters.isScreening === 'boolean') {
+                where.isScreening = filters.isScreening;
+            }
+        }
+
+        const responsesMin = filters?.responsesMin;
+        const responsesMax = filters?.responsesMax;
+
+        const hasCountFilter = typeof responsesMin === 'number' || typeof responsesMax === 'number';
+
+        // non-paginated path
         if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+            // if we need to filter by responses count, fetch counts and filter in JS
             const formsWithCount = await this.prisma.form.findMany({
                 where,
                 select: {
@@ -84,7 +116,7 @@ export class FormService {
                 orderBy: { updatedAt: 'desc' },
             });
 
-            return formsWithCount.map(form => ({
+            let mapped = formsWithCount.map(form => ({
                 idForm: form.idForm,
                 title: form.title,
                 description: form.description,
@@ -92,11 +124,59 @@ export class FormService {
                 isScreening: form.isScreening,
                 responses: form._count.responses,
             }));
+
+            if (hasCountFilter) {
+                mapped = mapped.filter(item => {
+                    if (typeof responsesMin === 'number' && item.responses < responsesMin) return false;
+                    if (typeof responsesMax === 'number' && item.responses > responsesMax) return false;
+                    return true;
+                });
+            }
+
+            return mapped;
         }
 
+        // paginated path
         const page = opts.page && opts.page > 0 ? opts.page : 1;
         const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
 
+        if (hasCountFilter) {
+            // fetch all with counts, filter in JS, then paginate the array
+            const rows = await this.prisma.form.findMany({
+                where,
+                select: {
+                    idForm: true,
+                    title: true,
+                    description: true,
+                    updatedAt: true,
+                    isScreening: true,
+                    _count: { select: { responses: true } },
+                },
+                orderBy: { updatedAt: 'desc' },
+            });
+
+            let mapped = rows.map(form => ({
+                idForm: form.idForm,
+                title: form.title,
+                description: form.description,
+                updatedAt: form.updatedAt,
+                isScreening: form.isScreening,
+                responses: form._count.responses,
+            }));
+
+            mapped = mapped.filter(item => {
+                if (typeof responsesMin === 'number' && item.responses < responsesMin) return false;
+                if (typeof responsesMax === 'number' && item.responses > responsesMax) return false;
+                return true;
+            });
+
+            const total = mapped.length;
+            const start = (page - 1) * pageSize;
+            const data = mapped.slice(start, start + pageSize);
+            return { total, page, pageSize, data };
+        }
+
+        // simple paginated DB query when no count filters
         const [total, rows] = await Promise.all([
             this.prisma.form.count({ where }),
             this.prisma.form.findMany({

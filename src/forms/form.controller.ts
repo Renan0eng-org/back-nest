@@ -17,10 +17,40 @@ export class FormController {
     ) { }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    findAll(
+        @Query('page') page?: string,
+        @Query('pageSize') pageSize?: string,
+        @Query('title') title?: string,
+        @Query('description') description?: string,
+        @Query('from') from?: string,
+        @Query('to') to?: string,
+        @Query('isScreening') isScreening?: string,
+        @Query('responsesMin') responsesMin?: string,
+        @Query('responsesMax') responsesMax?: string,
+    ) {
         const p = page ? parseInt(page, 10) : undefined;
         const ps = pageSize ? parseInt(pageSize, 10) : undefined;
-        return this.formService.findAll(p || ps ? { page: p, pageSize: ps } : undefined as any);
+
+        const filters: any = {};
+        if (title) filters.title = title;
+        if (description) filters.description = description;
+        if (from) filters.from = from;
+        if (to) filters.to = to;
+        if (typeof isScreening !== 'undefined') {
+            if (isScreening === 'true') filters.isScreening = true;
+            else if (isScreening === 'false') filters.isScreening = false;
+        }
+        if (typeof responsesMin !== 'undefined') {
+            const v = parseInt(responsesMin as any, 10);
+            if (!isNaN(v)) filters.responsesMin = v;
+        }
+        if (typeof responsesMax !== 'undefined') {
+            const v = parseInt(responsesMax as any, 10);
+            if (!isNaN(v)) filters.responsesMax = v;
+        }
+
+        const opts = p || ps ? { page: p, pageSize: ps, filters } : { filters } as any;
+        return (this.formService as any).findAll ? (this.formService as any).findAll(opts) : this.formService.findAll();
     }
 
     @Get('screenings')
