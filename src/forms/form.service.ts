@@ -601,71 +601,58 @@ export class FormService {
     }
 
 
-    async findAllResponses() {
-        const result = await this.prisma.response.findMany({
-            where: {
-                form: { active: true },
-            },
-            include: {
-                form: {
-                    select: {
-                        idForm: true,
-                        title: true,
-                    },
-                },
-                user: {
-                    select: {
-                        idUser: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-                answers: {
-                    include: {
-                        question: {
-                            include: {
-                                options: true,
-                            },
-                        },
-                    },
-                },
-            },
-            orderBy: {
-                submittedAt: 'desc',
-            },
-        });
+    async findAllResponses(opts?: { page?: number; pageSize?: number }) {
+        const baseWhere: any = { form: { active: true } };
 
-        return result.map(response => {
+        const mapWithScore = (responses: any[]) => responses.map(response => {
             let totalScore = 0;
-
             for (const answer of response.answers) {
                 const question = answer.question;
-
                 if (question.type === 'CHECKBOXES') {
-                    const selectedOptions = question.options.filter(opt =>
-                        answer.values.includes(opt.text)
-                    );
-
-                    for (const opt of selectedOptions) {
-                        totalScore += (opt.value || 0);
-                    }
-
+                    const selectedOptions = question.options.filter((opt: any) => answer.values.includes(opt.text));
+                    for (const opt of selectedOptions) totalScore += (opt.value || 0);
                 } else if (question.type === 'MULTIPLE_CHOICE') {
-                    const selectedOption = question.options.find(opt =>
-                        opt.text === answer.value
-                    );
-
-                    if (selectedOption) {
-                        totalScore += (selectedOption.value || 0);
-                    }
+                    const selectedOption = question.options.find((opt: any) => opt.text === answer.value);
+                    if (selectedOption) totalScore += (selectedOption.value || 0);
                 }
             }
-
-            return {
-                ...response,
-                totalScore,
-            };
+            return { ...response, totalScore };
         });
+
+        if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
+            const result = await this.prisma.response.findMany({
+                where: baseWhere,
+                include: {
+                    form: { select: { idForm: true, title: true } },
+                    user: { select: { idUser: true, name: true, email: true } },
+                    answers: { include: { question: { include: { options: true } } } },
+                },
+                orderBy: { submittedAt: 'desc' },
+            });
+
+            return mapWithScore(result);
+        }
+
+        const page = opts.page && opts.page > 0 ? opts.page : 1;
+        const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
+
+        const [total, rows] = await Promise.all([
+            this.prisma.response.count({ where: baseWhere }),
+            this.prisma.response.findMany({
+                where: baseWhere,
+                include: {
+                    form: { select: { idForm: true, title: true } },
+                    user: { select: { idUser: true, name: true, email: true } },
+                    answers: { include: { question: { include: { options: true } } } },
+                },
+                orderBy: { submittedAt: 'desc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
+        ]);
+
+        const data = mapWithScore(rows as any[]);
+        return { total, page, pageSize, data };
     }
 
     async findResponseDetail(responseId: string) {
