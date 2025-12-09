@@ -102,10 +102,30 @@ model Form {
   questions   Question[]
   responses   Response[]
   assignedUsers  User[] @relation("FormAssignedUsers")
+  scoreRules  ScoreRule[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   isScreening Boolean    @default(false)
   active      Boolean    @default(true)
+}
+
+model ScoreRule {
+  idScoreRule    String  @id @default(uuid())
+  minScore       Int
+  maxScore       Int
+  classification String
+  conduct        String
+  targetUserId   String?
+  order          Int     @default(0)
+
+  form   Form   @relation(fields: [formId], references: [idForm], onDelete: Cascade)
+  formId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([formId])
+  @@index([minScore, maxScore])
 }
 
 model Question {
@@ -142,6 +162,12 @@ model Response {
 
   observations String?
 
+  // Score-based classification
+  totalScore      Int?
+  classification  String?
+  conduct         String?
+  assignedToId    String?
+
   answers Answer[]
 
   // Appointments that reference this response (optional)
@@ -149,6 +175,7 @@ model Response {
 
   @@index([formId])
   @@index([userId])
+  @@index([assignedToId])
 }
 
 model Answer {
@@ -167,6 +194,7 @@ model Answer {
   @@index([responseId])
   @@index([questionId])
 }
+
 
 enum AppointmentStatus {
   Pendente

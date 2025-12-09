@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
 import { SaveFormDto } from './dto/save-form.dto';
 import { SubmitResponseDto } from './dto/submit-response.dto';
@@ -6,6 +6,26 @@ import { SubmitResponseDto } from './dto/submit-response.dto';
 @Injectable()
 export class FormService {
     constructor(private prisma: PrismaService) { }
+
+    // Ensure score rule ranges do not overlap within the same form
+    private ensureNoOverlap(rules: { minScore: number; maxScore: number; idScoreRule?: string }[]) {
+        const list = [...rules].map(r => ({ ...r, minScore: Number(r.minScore), maxScore: Number(r.maxScore) }));
+        for (const r of list) {
+            if (r.minScore > r.maxScore) {
+                throw new BadRequestException('minScore não pode ser maior que maxScore');
+            }
+        }
+        for (let i = 0; i < list.length; i++) {
+            for (let j = i + 1; j < list.length; j++) {
+                const a = list[i];
+                const b = list[j];
+                const overlaps = !(a.maxScore < b.minScore || a.minScore > b.maxScore);
+                if (overlaps) {
+                    throw new BadRequestException('Faixas de score não podem se sobrepor no mesmo formulário');
+                }
+            }
+        }
+    }
 
     async getAssignedUsers(idForm: string) {
         const form = await this.prisma.form.findUnique({
@@ -308,6 +328,9 @@ export class FormService {
                         },
                     },
                 },
+                scoreRules: {
+                    orderBy: { order: 'asc' },
+                },
             },
         });
 
@@ -318,7 +341,11 @@ export class FormService {
     }
 
     async create(dto: SaveFormDto) {
-        const { title, description, questions } = dto;
+        const { title, description, questions, scoreRules } = dto;
+
+        if (scoreRules && scoreRules.length > 0) {
+            this.ensureNoOverlap(scoreRules);
+        }
 
         return this.prisma.form.create({
             data: {
@@ -329,7 +356,7 @@ export class FormService {
                         text: q.text,
                         type: q.type,
                         required: q.required,
-                        order: qIndex, // Salva a ordem
+                        order: qIndex,
                         options: {
                             create: q.options.map((opt, oIndex) => ({
                                 text: opt.text,
@@ -339,18 +366,55 @@ export class FormService {
                         },
                     })),
                 },
+                ...(scoreRules && scoreRules.length > 0 && {
+                    scoreRules: {
+                        create: scoreRules.map((rule, idx) => ({
+                            minScore: rule.minScore,
+                            maxScore: rule.maxScore,
+                            classification: rule.classification,
+                            conduct: rule.conduct,
+                            targetUserId: rule.targetUserId,
+                            order: rule.order !== undefined ? rule.order : idx,
+                        })),
+                    },
+                }),
             },
         });
     }
 
     async update(formId: string, dto: SaveFormDto) {
-        const { title, description, questions } = dto;
+        const { title, description, questions, scoreRules } = dto;
 
         return this.prisma.$transaction(async (tx) => {
             await tx.form.update({
                 where: { idForm: formId },
                 data: { title, description },
             });
+
+            // Handle score rules update
+            if (scoreRules !== undefined) {
+                if (scoreRules.length > 0) {
+                    this.ensureNoOverlap(scoreRules);
+                }
+                // Delete all existing rules and create new ones
+                await (tx as any).scoreRule.deleteMany({
+                    where: { formId },
+                });
+
+                if (scoreRules.length > 0) {
+                    await (tx as any).scoreRule.createMany({
+                        data: scoreRules.map((rule, idx) => ({
+                            formId,
+                            minScore: rule.minScore,
+                            maxScore: rule.maxScore,
+                            classification: rule.classification,
+                            conduct: rule.conduct,
+                            targetUserId: rule.targetUserId,
+                            order: rule.order !== undefined ? rule.order : idx,
+                        })),
+                    });
+                }
+            }
 
             const oldQuestions = await tx.question.findMany({
                 where: { formId: formId },
@@ -436,6 +500,9 @@ export class FormService {
                                 orderBy: { order: 'asc' },
                             },
                         },
+                    },
+                    scoreRules: {
+                        orderBy: { order: 'asc' },
                     },
                 },
             });
@@ -901,6 +968,82 @@ export class FormService {
         });
 
         return allUsers;
+    }
+
+    // Score Rules Management
+    async getScoreRules(formId: string) {
+        const rules = await (this.prisma as any).scoreRule.findMany({
+            where: { formId },
+            orderBy: { order: 'asc' },
+        });
+
+        return rules;
+    }
+
+    async createScoreRule(formId: string, dto: any) {
+        const form = await this.prisma.form.findUnique({
+            where: { idForm: formId, active: true },
+        });
+
+        if (!form) throw new NotFoundException('Formulário não encontrado');
+
+        const existing = await (this.prisma as any).scoreRule.findMany({ where: { formId } });
+        this.ensureNoOverlap([...existing, dto]);
+
+        const rule = await (this.prisma as any).scoreRule.create({
+            data: {
+                formId,
+                minScore: dto.minScore,
+                maxScore: dto.maxScore,
+                classification: dto.classification,
+                conduct: dto.conduct,
+                targetUserId: dto.targetUserId,
+                order: dto.order || 0,
+            },
+        });
+
+        return rule;
+    }
+
+    async updateScoreRule(formId: string, ruleId: string, dto: any) {
+        const rule = await (this.prisma as any).scoreRule.findFirst({
+            where: { idScoreRule: ruleId, formId },
+        });
+
+        if (!rule) throw new NotFoundException('Regra não encontrada');
+
+        const others = await (this.prisma as any).scoreRule.findMany({
+            where: { formId, NOT: { idScoreRule: ruleId } },
+        });
+        this.ensureNoOverlap([...others, dto]);
+
+        const updated = await (this.prisma as any).scoreRule.update({
+            where: { idScoreRule: ruleId },
+            data: {
+                minScore: dto.minScore,
+                maxScore: dto.maxScore,
+                classification: dto.classification,
+                conduct: dto.conduct,
+                targetUserId: dto.targetUserId,
+                order: dto.order,
+            },
+        });
+
+        return updated;
+    }
+
+    async deleteScoreRule(formId: string, ruleId: string) {
+        const rule = await (this.prisma as any).scoreRule.findFirst({
+            where: { idScoreRule: ruleId, formId },
+        });
+
+        if (!rule) throw new NotFoundException('Regra não encontrada');
+
+        await (this.prisma as any).scoreRule.delete({
+            where: { idScoreRule: ruleId },
+        });
+
+        return { success: true };
     }
 
 }

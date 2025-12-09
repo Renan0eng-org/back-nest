@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min, MinLength, ValidateNested } from 'class-validator';
 import { QuestionType } from 'generated/prisma';
 
 class OptionDto {
@@ -34,6 +34,30 @@ class QuestionDto {
   options: OptionDto[];
 }
 
+class ScoreRuleDto {
+  @IsInt()
+  @Min(0)
+  minScore: number;
+
+  @IsInt()
+  @Min(0)
+  maxScore: number;
+
+  @IsString()
+  classification: string;
+
+  @IsString()
+  conduct: string;
+
+  @IsString()
+  @IsOptional()
+  targetUserId?: string;
+
+  @IsInt()
+  @IsOptional()
+  order?: number;
+}
+
 export class SaveFormDto {
   @IsString()
   @MinLength(4, { message: 'O título deve ter no mínimo 4 caracteres' })
@@ -47,4 +71,10 @@ export class SaveFormDto {
   @ValidateNested({ each: true })
   @Type(() => QuestionDto)
   questions: QuestionDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ScoreRuleDto)
+  @IsOptional()
+  scoreRules?: ScoreRuleDto[];
 }
