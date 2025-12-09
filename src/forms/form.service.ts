@@ -705,6 +705,7 @@ export class FormService {
 
             // create or update appointment based on matched rule
             if (matchedRule?.targetUserId) {
+                
                 const targetUser = await tx.user.findUnique({ where: { idUser: matchedRule.targetUserId }, select: { type: true } });
                 const isDoctor = targetUser?.type === 'MEDICO';
 
