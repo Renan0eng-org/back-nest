@@ -613,10 +613,13 @@ export class FormService {
 
             // create or update appointment based on matched rule
             if (matchedRule?.targetUserId) {
+                const targetUser = await tx.user.findUnique({ where: { idUser: matchedRule.targetUserId }, select: { type: true } });
+                const isDoctor = targetUser?.type === 'MEDICO';
+
                 const existingAppt = await (tx as any).appointment.findFirst({ where: { responseId: newResponse.idResponse } });
                 const apptData = {
-                    professionalId: matchedRule.targetUserId,
-                    doctorId: null,
+                    professionalId: isDoctor ? null : matchedRule.targetUserId,
+                    doctorId: isDoctor ? matchedRule.targetUserId : null,
                     patientId: userId,
                     responseId: newResponse.idResponse,
                     scheduledAt: new Date(),
@@ -702,10 +705,13 @@ export class FormService {
 
             // create or update appointment based on matched rule
             if (matchedRule?.targetUserId) {
+                const targetUser = await tx.user.findUnique({ where: { idUser: matchedRule.targetUserId }, select: { type: true } });
+                const isDoctor = targetUser?.type === 'MEDICO';
+
                 const existingAppt = await (tx as any).appointment.findFirst({ where: { responseId: responseId } });
                 const apptData = {
-                    professionalId: matchedRule.targetUserId,
-                    doctorId: null,
+                    professionalId: isDoctor ? null : matchedRule.targetUserId,
+                    doctorId: isDoctor ? matchedRule.targetUserId : null,
                     patientId: userId,
                     responseId: responseId,
                     scheduledAt: new Date(),
