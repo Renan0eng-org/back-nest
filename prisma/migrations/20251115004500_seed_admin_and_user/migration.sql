@@ -14,7 +14,8 @@ DECLARE
     'respostas',
     'atribuir-usuarios',
     'paciente',
-    'agendamentos'
+    'agendamentos',
+    'encaminhamentos'
   ];
 BEGIN
   -------------------------------------------------------------------

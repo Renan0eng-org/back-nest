@@ -140,6 +140,8 @@ model Response {
   user   User   @relation(fields: [userId], references: [idUser])
   userId String
 
+  observations String?
+
   answers Answer[]
 
   // Appointments that reference this response (optional)

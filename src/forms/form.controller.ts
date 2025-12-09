@@ -24,6 +24,9 @@ export class FormController {
         @Query('description') description?: string,
         @Query('from') from?: string,
         @Query('to') to?: string,
+        @Query('createdAt') createdAt?: string,
+        @Query('createdFrom') createdFrom?: string,
+        @Query('createdTo') createdTo?: string,
         @Query('isScreening') isScreening?: string,
         @Query('responsesMin') responsesMin?: string,
         @Query('responsesMax') responsesMax?: string,
@@ -36,6 +39,9 @@ export class FormController {
         if (description) filters.description = description;
         if (from) filters.from = from;
         if (to) filters.to = to;
+        if (createdAt) filters.createdAt = createdAt;
+        if (createdFrom) filters.createdFrom = createdFrom;
+        if (createdTo) filters.createdTo = createdTo;
         if (typeof isScreening !== 'undefined') {
             if (isScreening === 'true') filters.isScreening = true;
             else if (isScreening === 'false') filters.isScreening = false;

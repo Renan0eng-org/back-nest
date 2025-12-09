@@ -79,15 +79,38 @@ export class FormService {
             if (filters.description) {
                 where.description = { contains: filters.description, mode: 'insensitive' };
             }
+            
             if (filters.from || filters.to) {
-                where.createdAt = {};
+                where.updatedAt = {};
                 if (filters.from) {
                     const fromDate = new Date(filters.from);
-                    if (!isNaN(fromDate.getTime())) where.createdAt.gte = fromDate;
+                    if (!isNaN(fromDate.getTime())) where.updatedAt.gte = fromDate;
                 }
                 if (filters.to) {
                     const toDate = new Date(filters.to);
+                    if (!isNaN(toDate.getTime())) where.updatedAt.lte = toDate;
+                }
+            }
+
+            if (filters.createdFrom || filters.createdTo) {
+                where.createdAt = where.createdAt || {};
+                if (filters.createdFrom) {
+                    const fromDate = new Date(filters.createdFrom);
+                    if (!isNaN(fromDate.getTime())) where.createdAt.gte = fromDate;
+                }
+                if (filters.createdTo) {
+                    const toDate = new Date(filters.createdTo);
                     if (!isNaN(toDate.getTime())) where.createdAt.lte = toDate;
+                }
+            }
+            if (filters.createdAt) {
+                const day = new Date(filters.createdAt);
+                if (!isNaN(day.getTime())) {
+                    const start = new Date(day);
+                    start.setHours(0, 0, 0, 0);
+                    const end = new Date(day);
+                    end.setHours(23, 59, 59, 999);
+                    where.createdAt = { ...(where.createdAt || {}), gte: start, lte: end };
                 }
             }
             if (typeof filters.isScreening === 'boolean') {
@@ -110,6 +133,7 @@ export class FormService {
                     title: true,
                     description: true,
                     updatedAt: true,
+                    createdAt: true,
                     isScreening: true,
                     _count: { select: { responses: true } },
                 },
@@ -121,6 +145,7 @@ export class FormService {
                 title: form.title,
                 description: form.description,
                 updatedAt: form.updatedAt,
+                createdAt: form.createdAt,
                 isScreening: form.isScreening,
                 responses: form._count.responses,
             }));
@@ -149,6 +174,7 @@ export class FormService {
                     title: true,
                     description: true,
                     updatedAt: true,
+                    createdAt: true,
                     isScreening: true,
                     _count: { select: { responses: true } },
                 },
@@ -160,6 +186,7 @@ export class FormService {
                 title: form.title,
                 description: form.description,
                 updatedAt: form.updatedAt,
+                createdAt: form.createdAt,
                 isScreening: form.isScreening,
                 responses: form._count.responses,
             }));
@@ -186,6 +213,7 @@ export class FormService {
                     title: true,
                     description: true,
                     updatedAt: true,
+                    createdAt: true,
                     isScreening: true,
                     _count: { select: { responses: true } },
                 },
@@ -200,6 +228,7 @@ export class FormService {
             title: form.title,
             description: form.description,
             updatedAt: form.updatedAt,
+            createdAt: form.createdAt,
             isScreening: form.isScreening,
             responses: form._count.responses,
         }));
@@ -633,6 +662,7 @@ export class FormService {
                     },
                 },
                 answers: {
+                    orderBy: { question: { order: 'asc' } },
                     include: {
                         question: {
                             include: {
@@ -721,9 +751,12 @@ export class FormService {
             this.prisma.response.findMany({
                 where: baseWhere,
                 include: {
-                    form: { select: { idForm: true, title: true } },
+                    form: { select: { idForm: true, title: true, isScreening: true } },
                     user: { select: { idUser: true, name: true, email: true } },
-                    answers: { include: { question: { include: { options: true } } } },
+                    answers: { 
+                        include: { question: { include: { options: true } } },
+                        orderBy: { question: { order: 'asc' } },
+                    },
                 },
                 orderBy: { submittedAt: 'desc' },
                 skip: (page - 1) * pageSize,
