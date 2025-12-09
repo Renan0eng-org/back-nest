@@ -27,6 +27,27 @@ export class FormService {
         }
     }
 
+    private calculateScore(answers: any[]): number {
+        let totalScore = 0;
+        for (const answer of answers) {
+            const question = answer.question;
+            if (!question) continue;
+
+            if (question.type === 'CHECKBOXES') {
+                const selectedOptions = question.options?.filter((opt: any) => answer.values?.includes(opt.text)) || [];
+                for (const opt of selectedOptions) {
+                    totalScore += opt?.value ?? 0;
+                }
+            } else if (question.type === 'MULTIPLE_CHOICE') {
+                const selectedOption = question.options?.find((opt: any) => opt.text === answer.value);
+                if (selectedOption) {
+                    totalScore += selectedOption.value ?? 0;
+                }
+            }
+        }
+        return totalScore;
+    }
+
     async getAssignedUsers(idForm: string) {
         const form = await this.prisma.form.findUnique({
             where: { idForm },
@@ -570,7 +591,58 @@ export class FormService {
                 data: answersToCreate,
             });
 
-            return newResponse;
+            // reload with answers and form score rules
+            const responseWithAnswers = await tx.response.findUnique({
+                where: { idResponse: newResponse.idResponse },
+                include: {
+                    answers: {
+                        include: {
+                            question: { include: { options: true } },
+                        },
+                    },
+                    form: { include: { scoreRules: { orderBy: { order: 'asc' } } } },
+                },
+            });
+
+            if (!responseWithAnswers) return newResponse;
+
+            const totalScore = this.calculateScore(responseWithAnswers.answers);
+            const matchedRule = responseWithAnswers.form.scoreRules.find(
+                (rule: any) => totalScore >= rule.minScore && totalScore <= rule.maxScore,
+            );
+
+            // create or update appointment based on matched rule
+            if (matchedRule?.targetUserId) {
+                const existingAppt = await (tx as any).appointment.findFirst({ where: { responseId: newResponse.idResponse } });
+                const apptData = {
+                    professionalId: matchedRule.targetUserId,
+                    doctorId: null,
+                    patientId: userId,
+                    responseId: newResponse.idResponse,
+                    scheduledAt: new Date(),
+                    status: 'Pendente',
+                    notes: matchedRule.conduct ?? null,
+                    totalScoreAtTime: totalScore,
+                };
+                if (existingAppt) {
+                    await (tx as any).appointment.update({ where: { id: existingAppt.id }, data: apptData });
+                } else {
+                    await (tx as any).appointment.create({ data: apptData });
+                }
+            }
+
+            const updated = await tx.response.update({
+                where: { idResponse: newResponse.idResponse },
+                data: {
+                    totalScore,
+                    classification: matchedRule?.classification,
+                    conduct: matchedRule?.conduct,
+                    assignedToId: matchedRule?.targetUserId ?? null,
+                    observations: matchedRule?.conduct ?? null,
+                },
+            });
+
+            return updated;
         });
     }
 
@@ -608,7 +680,58 @@ export class FormService {
 
             await tx.answer.createMany({ data: answersToCreate });
 
-            return existingResponse;
+            // reload with answers and form score rules
+            const responseWithAnswers = await tx.response.findUnique({
+                where: { idResponse: responseId },
+                include: {
+                    answers: {
+                        include: {
+                            question: { include: { options: true } },
+                        },
+                    },
+                    form: { include: { scoreRules: { orderBy: { order: 'asc' } } } },
+                },
+            });
+
+            if (!responseWithAnswers) return existingResponse;
+
+            const totalScore = this.calculateScore(responseWithAnswers.answers);
+            const matchedRule = responseWithAnswers.form.scoreRules.find(
+                (rule: any) => totalScore >= rule.minScore && totalScore <= rule.maxScore,
+            );
+
+            // create or update appointment based on matched rule
+            if (matchedRule?.targetUserId) {
+                const existingAppt = await (tx as any).appointment.findFirst({ where: { responseId: responseId } });
+                const apptData = {
+                    professionalId: matchedRule.targetUserId,
+                    doctorId: null,
+                    patientId: userId,
+                    responseId: responseId,
+                    scheduledAt: new Date(),
+                    status: 'Pendente',
+                    notes: matchedRule.conduct ?? null,
+                    totalScoreAtTime: totalScore,
+                };
+                if (existingAppt) {
+                    await (tx as any).appointment.update({ where: { id: existingAppt.id }, data: apptData });
+                } else {
+                    await (tx as any).appointment.create({ data: apptData });
+                }
+            }
+
+            const updated = await tx.response.update({
+                where: { idResponse: responseId },
+                data: {
+                    totalScore,
+                    classification: matchedRule?.classification,
+                    conduct: matchedRule?.conduct,
+                    assignedToId: matchedRule?.targetUserId ?? null,
+                    observations: matchedRule?.conduct ?? null,
+                },
+            });
+
+            return updated;
         });
     }
 
