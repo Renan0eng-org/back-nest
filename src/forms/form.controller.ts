@@ -207,10 +207,39 @@ export class FormController {
 
     @Get('/responses/list')
     @Menu('respostas')
-    findAllResponses(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    findAllResponses(
+        @Query('page') page?: string,
+        @Query('pageSize') pageSize?: string,
+        @Query('formTitle') formTitle?: string,
+        @Query('patientName') patientName?: string,
+        @Query('from') from?: string,
+        @Query('to') to?: string,
+        @Query('isScreening') isScreening?: string,
+        @Query('scoreMin') scoreMin?: string,
+        @Query('scoreMax') scoreMax?: string,
+    ) {
         const p = page ? parseInt(page, 10) : undefined;
         const ps = pageSize ? parseInt(pageSize, 10) : undefined;
-        return (this.formService as any).findAllResponses ? (this.formService as any).findAllResponses({ page: p, pageSize: ps }) : this.formService.findAllResponses();
+        
+        const filters: any = {};
+        if (formTitle) filters.formTitle = formTitle;
+        if (patientName) filters.patientName = patientName;
+        if (from) filters.from = from;
+        if (to) filters.to = to;
+        if (typeof isScreening !== 'undefined') {
+            if (isScreening === 'true') filters.isScreening = true;
+            else if (isScreening === 'false') filters.isScreening = false;
+        }
+        if (typeof scoreMin !== 'undefined') {
+            const v = parseInt(scoreMin as any, 10);
+            if (!isNaN(v)) filters.scoreMin = v;
+        }
+        if (typeof scoreMax !== 'undefined') {
+            const v = parseInt(scoreMax as any, 10);
+            if (!isNaN(v)) filters.scoreMax = v;
+        }
+
+        return (this.formService as any).findAllResponses ? (this.formService as any).findAllResponses({ page: p, pageSize: ps, filters }) : this.formService.findAllResponses();
     }
 
     @Get('response/:responseId')

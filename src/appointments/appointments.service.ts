@@ -71,23 +71,77 @@ export class AppointmentsService {
 
     if (query?.patientId) where.patientId = query.patientId;
 
+    // Filter by patient name using relationship
+    if (query?.patientName) {
+      where.patient = {
+        name: { contains: query.patientName, mode: 'insensitive' },
+      };
+    }
+
+    // Filter by doctor name using relationship
+    if (query?.doctorName) {
+      where.doctor = {
+        name: { contains: query.doctorName, mode: 'insensitive' },
+      };
+    }
+
+    // Filter by status - validate against enum values
+    const validStatuses = ['Pendente', 'Confirmado', 'Cancelado', 'Completo'];
     if (query?.status) {
-      where.status = query.status;
+      if (validStatuses.includes(query.status)) {
+        where.status = query.status;
+      } else {
+        throw new BadRequestException(`Status inválido. Valores aceitos: ${validStatuses.join(', ')}`);
+      }
     } else {
       where.status = { not: AppointmentStatus.Cancelado };
     }
 
-    if (query?.from || query?.to) {
+    // Filter by scheduled date range
+    if (query?.scheduledFrom || query?.scheduledTo) {
       where.scheduledAt = {};
-      if (query.from) where.scheduledAt.gte = new Date(query.from);
-      if (query.to) where.scheduledAt.lte = new Date(query.to);
+      if (query.scheduledFrom) {
+        const fromDate = new Date(query.scheduledFrom);
+        if (!isNaN(fromDate.getTime())) {
+          fromDate.setHours(0, 0, 0, 0);
+          where.scheduledAt.gte = fromDate;
+        }
+      }
+      if (query.scheduledTo) {
+        const toDate = new Date(query.scheduledTo);
+        if (!isNaN(toDate.getTime())) {
+          toDate.setHours(23, 59, 59, 999);
+          where.scheduledAt.lte = toDate;
+        }
+      }
       if (Object.keys(where.scheduledAt).length === 0) delete where.scheduledAt;
     }
 
+    // Filter by created date range
+    if (query?.createdFrom || query?.createdTo) {
+      where.createdAt = {};
+      if (query.createdFrom) {
+        const fromDate = new Date(query.createdFrom);
+        if (!isNaN(fromDate.getTime())) {
+          fromDate.setHours(0, 0, 0, 0);
+          where.createdAt.gte = fromDate;
+        }
+      }
+      if (query.createdTo) {
+        const toDate = new Date(query.createdTo);
+        if (!isNaN(toDate.getTime())) {
+          toDate.setHours(23, 59, 59, 999);
+          where.createdAt.lte = toDate;
+        }
+      }
+      if (Object.keys(where.createdAt).length === 0) delete where.createdAt;
+    }
+
+    // Existing doctor filter logic
     if (query?.doctorId) {
       where.doctorId = query.doctorId;
-    } else {
-      // use top-level NOT to avoid Prisma runtime issues with `not: null`
+    } else if (!query?.doctorName) {
+      // Only add this filter if not filtering by name
       where.NOT = { doctorId: null };
     }
 
@@ -126,22 +180,77 @@ export class AppointmentsService {
 
     if (query.patientId) where.patientId = query.patientId;
 
+    // Filter by patient name using relationship
+    if (query.patientName) {
+      where.patient = {
+        name: { contains: query.patientName, mode: 'insensitive' },
+      };
+    }
+
+    // Filter by professional name using relationship
+    if (query.professionalName) {
+      where.professional = {
+        name: { contains: query.professionalName, mode: 'insensitive' },
+      };
+    }
+
+    // Filter by status - validate against enum values
+    const validStatuses = ['Pendente', 'Confirmado', 'Cancelado', 'Completo'];
     if (query.status) {
-      where.status = query.status;
+      if (validStatuses.includes(query.status)) {
+        where.status = query.status;
+      } else {
+        throw new BadRequestException(`Status inválido. Valores aceitos: ${validStatuses.join(', ')}`);
+      }
     } else {
       where.status = { not: AppointmentStatus.Cancelado };
     }
 
-    if (query.from || query.to) {
+    // Filter by scheduled date range
+    if (query.scheduledFrom || query.scheduledTo) {
       where.scheduledAt = {};
-      if (query.from) where.scheduledAt.gte = new Date(query.from);
-      if (query.to) where.scheduledAt.lte = new Date(query.to);
+      if (query.scheduledFrom) {
+        const fromDate = new Date(query.scheduledFrom);
+        if (!isNaN(fromDate.getTime())) {
+          fromDate.setHours(0, 0, 0, 0);
+          where.scheduledAt.gte = fromDate;
+        }
+      }
+      if (query.scheduledTo) {
+        const toDate = new Date(query.scheduledTo);
+        if (!isNaN(toDate.getTime())) {
+          toDate.setHours(23, 59, 59, 999);
+          where.scheduledAt.lte = toDate;
+        }
+      }
       if (Object.keys(where.scheduledAt).length === 0) delete where.scheduledAt;
     }
 
+    // Filter by created date range
+    if (query.createdFrom || query.createdTo) {
+      where.createdAt = {};
+      if (query.createdFrom) {
+        const fromDate = new Date(query.createdFrom);
+        if (!isNaN(fromDate.getTime())) {
+          fromDate.setHours(0, 0, 0, 0);
+          where.createdAt.gte = fromDate;
+        }
+      }
+      if (query.createdTo) {
+        const toDate = new Date(query.createdTo);
+        if (!isNaN(toDate.getTime())) {
+          toDate.setHours(23, 59, 59, 999);
+          where.createdAt.lte = toDate;
+        }
+      }
+      if (Object.keys(where.createdAt).length === 0) delete where.createdAt;
+    }
+
+    // Existing professional filter logic
     if (query?.professionalId) {
       where.professionalId = query.professionalId;
-    } else {
+    } else if (!query.professionalName) {
+      // Only add this filter if not filtering by name
       where.NOT = { professionalId: null };
     }
 

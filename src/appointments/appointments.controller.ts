@@ -15,18 +15,62 @@ export class AppointmentsController {
   }
 
   @Get("")
-  findAll(@Query() query: any, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+  findAll(
+    @Query() query: any,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('patientName') patientName?: string,
+    @Query('doctorName') doctorName?: string,
+    @Query('scheduledFrom') scheduledFrom?: string,
+    @Query('scheduledTo') scheduledTo?: string,
+    @Query('createdFrom') createdFrom?: string,
+    @Query('createdTo') createdTo?: string,
+    @Query('status') status?: string,
+  ) {
     const p = page ? parseInt(page, 10) : undefined;
     const ps = pageSize ? parseInt(pageSize, 10) : undefined;
-    return this.service.findAll(query, p || ps ? { page: p, pageSize: ps } : undefined as any);
+
+    const filters: any = {};
+    if (patientName) filters.patientName = patientName;
+    if (doctorName) filters.doctorName = doctorName;
+    if (scheduledFrom) filters.scheduledFrom = scheduledFrom;
+    if (scheduledTo) filters.scheduledTo = scheduledTo;
+    if (createdFrom) filters.createdFrom = createdFrom;
+    if (createdTo) filters.createdTo = createdTo;
+    if (status) filters.status = status;
+
+    const mergedQuery = { ...query, ...filters };
+    return this.service.findAll(mergedQuery, p || ps ? { page: p, pageSize: ps } : undefined as any);
   }
 
   @Menu('encaminhamento')
   @Get('referrals')
-  findReferrals(@Query() query: any, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+  findReferrals(
+    @Query() query: any,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('patientName') patientName?: string,
+    @Query('professionalName') professionalName?: string,
+    @Query('scheduledFrom') scheduledFrom?: string,
+    @Query('scheduledTo') scheduledTo?: string,
+    @Query('createdFrom') createdFrom?: string,
+    @Query('createdTo') createdTo?: string,
+    @Query('status') status?: string,
+  ) {
     const p = page ? parseInt(page, 10) : undefined;
     const ps = pageSize ? parseInt(pageSize, 10) : undefined;
-    return this.service.findReferrals(query, p || ps ? { page: p, pageSize: ps } : undefined as any);
+
+    const filters: any = {};
+    if (patientName) filters.patientName = patientName;
+    if (professionalName) filters.professionalName = professionalName;
+    if (scheduledFrom) filters.scheduledFrom = scheduledFrom;
+    if (scheduledTo) filters.scheduledTo = scheduledTo;
+    if (createdFrom) filters.createdFrom = createdFrom;
+    if (createdTo) filters.createdTo = createdTo;
+    if (status) filters.status = status;
+
+    const mergedQuery = { ...query, ...filters };
+    return this.service.findReferrals(mergedQuery, p || ps ? { page: p, pageSize: ps } : undefined as any);
   }
 
   @Get(':id')

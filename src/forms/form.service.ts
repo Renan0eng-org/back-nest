@@ -908,8 +908,37 @@ export class FormService {
     }
 
 
-    async findAllResponses(opts?: { page?: number; pageSize?: number }) {
+    async findAllResponses(opts?: { page?: number; pageSize?: number; filters?: any }) {
+        const filters = opts?.filters;
         const baseWhere: any = { form: { active: true } };
+
+        // Apply filters to the where clause
+        if (filters) {
+            if (filters.formTitle) {
+                baseWhere.form.title = { contains: filters.formTitle, mode: 'insensitive' };
+            }
+            if (filters.patientName) {
+                baseWhere.user = { ...baseWhere.user, name: { contains: filters.patientName, mode: 'insensitive' } };
+            }
+            if (filters.isScreening === true || filters.isScreening === false) {
+                baseWhere.form.isScreening = filters.isScreening;
+            }
+            if (filters.from || filters.to) {
+                baseWhere.submittedAt = {};
+                if (filters.from) {
+                    const fromDate = new Date(filters.from);
+                    if (!isNaN(fromDate.getTime())) baseWhere.submittedAt.gte = fromDate;
+                }
+                if (filters.to) {
+                    const toDate = new Date(filters.to);
+                    if (!isNaN(toDate.getTime())) baseWhere.submittedAt.lte = toDate;
+                }
+            }
+        }
+
+        const scoreMin = filters?.scoreMin;
+        const scoreMax = filters?.scoreMax;
+        const hasScoreFilter = typeof scoreMin === 'number' || typeof scoreMax === 'number';
 
         const mapWithScore = (responses: any[]) => responses.map(response => {
             let totalScore = 0;
@@ -930,19 +959,61 @@ export class FormService {
             const result = await this.prisma.response.findMany({
                 where: baseWhere,
                 include: {
-                    form: { select: { idForm: true, title: true } },
+                    form: { select: { idForm: true, title: true, isScreening: true } },
                     user: { select: { idUser: true, name: true, email: true } },
                     answers: { include: { question: { include: { options: true } } } },
                 },
                 orderBy: { submittedAt: 'desc' },
             });
 
-            return mapWithScore(result);
+            let mapped = mapWithScore(result);
+
+            // Apply score filters in memory
+            if (hasScoreFilter) {
+                mapped = mapped.filter(item => {
+                    if (typeof scoreMin === 'number' && item.totalScore < scoreMin) return false;
+                    if (typeof scoreMax === 'number' && item.totalScore > scoreMax) return false;
+                    return true;
+                });
+            }
+
+            return mapped;
         }
 
         const page = opts.page && opts.page > 0 ? opts.page : 1;
         const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
 
+        if (hasScoreFilter) {
+            // When score filtering is needed, fetch all and filter in memory
+            const rows = await this.prisma.response.findMany({
+                where: baseWhere,
+                include: {
+                    form: { select: { idForm: true, title: true, isScreening: true } },
+                    user: { select: { idUser: true, name: true, email: true } },
+                    answers: { 
+                        include: { question: { include: { options: true } } },
+                        orderBy: { question: { order: 'asc' } },
+                    },
+                },
+                orderBy: { submittedAt: 'desc' },
+            });
+
+            let mapped = mapWithScore(rows as any[]);
+
+            // Apply score filters
+            mapped = mapped.filter(item => {
+                if (typeof scoreMin === 'number' && item.totalScore < scoreMin) return false;
+                if (typeof scoreMax === 'number' && item.totalScore > scoreMax) return false;
+                return true;
+            });
+
+            const total = mapped.length;
+            const start = (page - 1) * pageSize;
+            const data = mapped.slice(start, start + pageSize);
+            return { total, page, pageSize, data };
+        }
+
+        // Simple paginated DB query when no score filters
         const [total, rows] = await Promise.all([
             this.prisma.response.count({ where: baseWhere }),
             this.prisma.response.findMany({
