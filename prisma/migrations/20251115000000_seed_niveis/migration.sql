@@ -58,13 +58,23 @@ WHERE NOT EXISTS (SELECT 1 FROM "Menu_Acesso" WHERE "slug" = 'paciente');
 -- agendamentos
 
 INSERT INTO "Menu_Acesso" ("nome", "slug", "visualizar", "criar", "editar", "excluir", "relatorio")
-SELECT 'Agendamentos', 'agendamentos', TRUE, TRUE, TRUE, TRUE, TRUE
+SELECT 'Agendamentos', 'agendamento', TRUE, TRUE, TRUE, TRUE, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM "Menu_Acesso" WHERE "slug" = 'agendamento');
 
 -- encaminhamentos
 
 INSERT INTO "Menu_Acesso" ("nome", "slug", "visualizar", "criar", "editar", "excluir", "relatorio")
-SELECT 'Encaminhamentos', 'encaminhamentos', TRUE, TRUE, TRUE, TRUE, TRUE
+SELECT 'Encaminhamentos', 'encaminhamento', TRUE, TRUE, TRUE, TRUE, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM "Menu_Acesso" WHERE "slug" = 'encaminhamento');
+
+-- log
+INSERT INTO "Menu_Acesso" ("nome", "slug", "visualizar", "criar", "editar", "excluir", "relatorio")
+SELECT 'Logs de Acesso', 'log', TRUE, TRUE, TRUE, TRUE, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM "Menu_Acesso" WHERE "slug" = 'log');
+
+-- esteira-pacientes
+INSERT INTO "Menu_Acesso" ("nome", "slug", "visualizar", "criar", "editar", "excluir", "relatorio")
+SELECT 'Esteira de Pacientes', 'esteira-pacientes', TRUE, TRUE, TRUE, TRUE, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM "Menu_Acesso" WHERE "slug" = 'esteira-pacientes');
 
 COMMIT;

@@ -14,10 +14,46 @@ export class PatientsController {
     constructor(private readonly patientsService: PatientsService, private readonly authService: AuthService) { }
 
     @Get()
-    findAll(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    findAll(
+        @Query('page') page?: string,
+        @Query('pageSize') pageSize?: string,
+        @Query('name') name?: string,
+        @Query('email') email?: string,
+        @Query('cpf') cpf?: string,
+        @Query('birthDateFrom') birthDateFrom?: string,
+        @Query('birthDateTo') birthDateTo?: string,
+        @Query('sexo') sexo?: string,
+        @Query('unidadeSaude') unidadeSaude?: string,
+        @Query('medicamentos') medicamentos?: string,
+        @Query('exames') exames?: string,
+        @Query('examesDetalhes') examesDetalhes?: string,
+        @Query('alergias') alergias?: string,
+        @Query('active') active?: string,
+    ) {
         const p = page ? parseInt(page, 10) : undefined;
         const ps = pageSize ? parseInt(pageSize, 10) : undefined;
-        return this.patientsService.findAll(p || ps ? { page: p, pageSize: ps } : undefined as any);
+
+        const filters: any = {};
+        if (name) filters.name = name;
+        if (email) filters.email = email;
+        if (cpf) filters.cpf = cpf;
+        if (birthDateFrom) filters.birthDateFrom = birthDateFrom;
+        if (birthDateTo) filters.birthDateTo = birthDateTo;
+        if (sexo && sexo !== 'all') filters.sexo = sexo;
+        if (unidadeSaude) filters.unidadeSaude = unidadeSaude;
+        if (medicamentos) filters.medicamentos = medicamentos;
+        if (typeof exames !== 'undefined') {
+            if (exames === 'true') filters.exames = true;
+            else if (exames === 'false') filters.exames = false;
+        }
+        if (examesDetalhes) filters.examesDetalhes = examesDetalhes;
+        if (alergias) filters.alergias = alergias;
+        if (typeof active !== 'undefined') {
+            if (active === 'true') filters.active = true;
+            else if (active === 'false') filters.active = false;
+        }
+
+        return this.patientsService.findAll(p || ps ? { page: p, pageSize: ps, filters } : { filters } as any);
     }
 
     @Get(':id')

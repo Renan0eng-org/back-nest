@@ -75,10 +75,30 @@ export class AcessoController {
 
     @Get('users')
     @UseGuards(RefreshTokenGuard)
-    findUsers(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    findUsers(
+        @Query('page') page?: string,
+        @Query('pageSize') pageSize?: string,
+        @Query('type') type?: string,
+        @Query('name') name?: string,
+        @Query('accessLevel') accessLevel?: string,
+        @Query('active') active?: string,
+    ) {
         const p = page ? parseInt(page, 10) : undefined;
         const ps = pageSize ? parseInt(pageSize, 10) : undefined;
-        return this.acessoService.findUsers(p || ps ? { page: p, pageSize: ps } : undefined as any);
+
+        const filters: any = {};
+        if (type) filters.type = type;
+        if (name) filters.name = name;
+        if (accessLevel) {
+            const al = parseInt(accessLevel, 10);
+            if (!isNaN(al)) filters.accessLevel = al;
+        }
+        if (typeof active !== 'undefined') {
+            if (active === 'true') filters.active = true;
+            else if (active === 'false') filters.active = false;
+        }
+
+        return this.acessoService.findUsers(p || ps ? { page: p, pageSize: ps, filters } : { filters } as any);
     }
 
     @Patch('users/:id/nivel')

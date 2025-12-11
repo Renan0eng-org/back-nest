@@ -85,8 +85,42 @@ export class AcessoService {
         });
     }
 
-    async findUsers(opts?: { page?: number; pageSize?: number }) {
-        const where: any = { type: { not: { in: ['ADMIN'] } }, dt_delete: null };
+    async findUsers(opts?: { page?: number; pageSize?: number; filters?: any }) {
+        const filters = opts?.filters;
+        const where: any = { dt_delete: null };
+
+        // Filter by type
+        if (filters?.type) {
+            if (filters.type === 'NOT_PACIENTE') {
+                // Exclude PACIENTE and ADMIN types
+                where.type = { notIn: ['PACIENTE', 'ADMIN'] };
+            } else if (filters.type === 'NOT_ADMIN') {
+                // Exclude only ADMIN type
+                where.type = { not: 'ADMIN' };
+            } else {
+                // Specific type
+                where.type = filters.type;
+            }
+        } else {
+            // Default: exclude ADMIN
+            where.type = { not: 'ADMIN' };
+        }
+
+        // Filter by name (case-insensitive partial match)
+        if (filters?.name) {
+            where.name = { contains: filters.name, mode: 'insensitive' };
+        }
+
+        // Filter by access level (nivelAcessoId)
+        if (typeof filters?.accessLevel === 'number') {
+            where.nivelAcessoId = filters.accessLevel;
+        }
+
+        // Filter by active status
+        if (typeof filters?.active === 'boolean') {
+            where.active = filters.active;
+        }
+
         const select = {
             idUser: true,
             name: true,

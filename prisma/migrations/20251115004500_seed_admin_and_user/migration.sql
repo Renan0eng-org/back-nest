@@ -5,7 +5,7 @@ DECLARE
   slug_var TEXT;
 
   slugs TEXT[] := ARRAY[
-    'dash-admin',
+    -- 'dash-admin',
     'dash-professional',
     'acesso',
     'ativacao-usuarios',
@@ -14,8 +14,10 @@ DECLARE
     'respostas',
     'atribuir-usuarios',
     'paciente',
-    'agendamentos',
-    'encaminhamentos'
+    'agendamento',
+    'esteira-pacientes',
+    'encaminhamento',
+    'log'
   ];
 BEGIN
   -------------------------------------------------------------------

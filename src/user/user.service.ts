@@ -71,12 +71,38 @@ export class UserService {
         }
     }
 
-    async findAll(opts?: { page?: number; pageSize?: number }) {
+    async findAll(opts?: { page?: number; pageSize?: number; filters?: any }) {
+        const filters = opts?.filters;
+        const baseWhere: any = { dt_delete: null };
+
+        // Filter by type
+        if (filters?.type) {
+            baseWhere.type = filters.type;
+        } else {
+            // Default: keep previous behavior (exclude ADMIN and PACIENTE)
+            baseWhere.type = { not: { in: ['ADMIN', 'PACIENTE'] } };
+        }
+
+        // Filter by name (case-insensitive partial)
+        if (filters?.name) {
+            baseWhere.name = { contains: filters.name, mode: 'insensitive' };
+        }
+
+        // Filter by access level
+        if (typeof filters?.accessLevel === 'number') {
+            baseWhere.nivelAcessoId = filters.accessLevel;
+        }
+
+        // Filter by active flag
+        if (typeof filters?.active === 'boolean') {
+            baseWhere.active = filters.active;
+        }
+
         // if pagination opts not provided, keep previous behavior (return array)
         if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
             return this.prisma.user.findMany({
                 select: userSelect,
-                where: { type: { not: { in: ['ADMIN', 'PACIENTE'] } } },
+                where: baseWhere,
                 orderBy: { name: 'asc' },
             });
         }
@@ -84,12 +110,10 @@ export class UserService {
         const page = opts.page && opts.page > 0 ? opts.page : 1;
         const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
 
-        const where: any = { type: { not: { in: ['ADMIN', 'PACIENTE'] } } };
-
         const [total, data] = await Promise.all([
-            this.prisma.user.count({ where }),
+            this.prisma.user.count({ where: baseWhere }),
             this.prisma.user.findMany({
-                where,
+                where: baseWhere,
                 select: userSelect,
                 orderBy: { name: 'asc' },
                 skip: (page - 1) * pageSize,

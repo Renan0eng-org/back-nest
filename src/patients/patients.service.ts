@@ -36,10 +36,62 @@ const patientSelect = Prisma.validator<Prisma.UserSelect>()({
 export class PatientsService {
     constructor(private prisma: PrismaService, private authService: AuthService) { }
 
-    async findAll(opts?: { page?: number; pageSize?: number }) {
+    async findAll(opts?: { page?: number; pageSize?: number; filters?: any }) {
+        const filters = opts?.filters;
+        const where: any = { type: 'PACIENTE', dt_delete: null };
+
+        if (filters?.name) {
+            where.name = { contains: filters.name, mode: 'insensitive' };
+        }
+        if (filters?.email) {
+            where.email = { contains: filters.email, mode: 'insensitive' };
+        }
+        if (filters?.cpf) {
+            where.cpf = { contains: filters.cpf, mode: 'insensitive' };
+        }
+        if (filters?.birthDateFrom || filters?.birthDateTo) {
+            where.birthDate = {};
+            if (filters.birthDateFrom) {
+                const from = new Date(filters.birthDateFrom);
+                if (!isNaN(from.getTime())) {
+                    from.setHours(0, 0, 0, 0);
+                    where.birthDate.gte = from;
+                }
+            }
+            if (filters.birthDateTo) {
+                const to = new Date(filters.birthDateTo);
+                if (!isNaN(to.getTime())) {
+                    to.setHours(23, 59, 59, 999);
+                    where.birthDate.lte = to;
+                }
+            }
+            if (Object.keys(where.birthDate).length === 0) delete where.birthDate;
+        }
+        if (filters?.sexo) {
+            where.sexo = filters.sexo;
+        }
+        if (filters?.unidadeSaude) {
+            where.unidadeSaude = { contains: filters.unidadeSaude, mode: 'insensitive' };
+        }
+        if (filters?.medicamentos) {
+            where.medicamentos = { contains: filters.medicamentos, mode: 'insensitive' };
+        }
+        if (typeof filters?.exames === 'boolean') {
+            where.exames = filters.exames;
+        }
+        if (filters?.examesDetalhes) {
+            where.examesDetalhes = { contains: filters.examesDetalhes, mode: 'insensitive' };
+        }
+        if (filters?.alergias) {
+            where.alergias = { contains: filters.alergias, mode: 'insensitive' };
+        }
+        if (typeof filters?.active === 'boolean') {
+            where.active = filters.active;
+        }
+
         if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
             return this.prisma.user.findMany({
-                where: { type: 'PACIENTE', dt_delete: null },
+                where,
                 select: patientSelect,
                 orderBy: { name: 'asc' },
             });
@@ -47,8 +99,6 @@ export class PatientsService {
 
         const page = opts.page && opts.page > 0 ? opts.page : 1;
         const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 20;
-
-        const where: any = { type: 'PACIENTE', dt_delete: null };
 
         const [total, data] = await Promise.all([
             this.prisma.user.count({ where }),
@@ -197,7 +247,23 @@ export class PatientsService {
 
     async remove(id: string, idUser: string) {
         try {
-            await this.prisma.user.update({ where: { idUser: id }, data: { user_id_delete: idUser, dt_delete: new Date() } });
+            // pega o usuario para colocar o cpf com sufixo _delete_deteTedTimestamp
+            const user = await this.prisma.user.findUnique({ where: { idUser: id }, select: { cpf: true } });
+            if (!user) throw new NotFoundException('Paciente não encontrado');
+            const cpf = `${user.cpf}_delete_${Date.now()}` ;
+
+            await this.prisma.user.update({ where: { idUser: id }, data: { user_id_delete: idUser, dt_delete: new Date(), cpf: cpf } });
+
+            // cansela os agendamentos futuros do paciente
+            await this.prisma.appointment.updateMany({
+                where: {
+                    patientId: id,
+                    status: { in: ['Pendente', 'Confirmado'] },
+                },
+                data: {
+                    status: 'Cancelado',
+                },
+            });
             return { success: true };
         } catch (e) {
             throw new BadRequestException('Não foi possível deletar paciente');

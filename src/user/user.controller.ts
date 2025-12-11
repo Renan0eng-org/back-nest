@@ -18,12 +18,31 @@ export class UserController {
 
     @Get()
     @UseGuards(RefreshTokenGuard)
-    findAll(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    findAll(
+        @Query('page') page?: string,
+        @Query('pageSize') pageSize?: string,
+        @Query('name') name?: string,
+        @Query('accessLevel') accessLevel?: string,
+        @Query('type') type?: string,
+        @Query('active') active?: string,
+    ) {
         const p = page ? parseInt(page, 10) : undefined;
         const ps = pageSize ? parseInt(pageSize, 10) : undefined;
 
+        const filters: any = {};
+        if (name) filters.name = name;
+        if (accessLevel) {
+            const al = parseInt(accessLevel, 10);
+            if (!isNaN(al)) filters.accessLevel = al;
+        }
+        if (type) filters.type = type;
+        if (typeof active !== 'undefined') {
+            if (active === 'true') filters.active = true;
+            else if (active === 'false') filters.active = false;
+        }
+
         // preserve backward compatibility: if no pagination provided, service returns array
-        return this.userService.findAll(p || ps ? { page: p, pageSize: ps } : undefined as any);
+        return this.userService.findAll(p || ps ? { page: p, pageSize: ps, filters } : { filters } as any);
     }
 
     @Get(':id')
