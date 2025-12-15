@@ -90,6 +90,7 @@ export class AppointmentsController {
 
   // lista os usuarios Profissional
   @Get('users/professional')
+  @Menu('')
   findProfessionalUsers(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
     const p = page ? parseInt(page, 10) : undefined;
     const ps = pageSize ? parseInt(pageSize, 10) : undefined;
