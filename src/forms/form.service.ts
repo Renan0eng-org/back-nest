@@ -848,6 +848,7 @@ export class FormService {
                 form: {
                     select: {
                         idForm: true,
+                        description: true,
                         title: true,
                     },
                 },
