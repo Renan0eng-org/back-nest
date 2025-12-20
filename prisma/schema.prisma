@@ -60,6 +60,11 @@ model User {
 
   errorLogs     ErrorLog[]
 
+  // Back-relations for notifications system
+  createdNotifications Notification[] @relation("NotificationCreatedBy")
+  userNotifications   UserNotification[]
+  pushSubscriptions   PushSubscription[]
+
   @@index([idUser])
   @@index([user_id_create])
   @@index([user_id_update])
@@ -247,4 +252,65 @@ model ErrorLog {
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// Notifications
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+model Notification {
+  id           String  @id @default(uuid())
+  title        String
+  body         String?
+  data         Json?
+  category     String?
+  priority     Int     @default(0)
+  createdAt    DateTime @default(now())
+
+  createdById  String?
+  createdBy    User?    @relation("NotificationCreatedBy", fields: [createdById], references: [idUser])
+
+  userNotifications UserNotification[]
+
+  @@index([createdAt])
+  @@index([category])
+}
+
+model UserNotification {
+  id             String  @id @default(uuid())
+  status         NotificationStatus @default(UNREAD)
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  muted          Boolean @default(false)
+  createdAt      DateTime @default(now())
+
+  // Relations
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id])
+
+  userId         String
+  user           User @relation(fields: [userId], references: [idUser])
+
+  @@unique([notificationId, userId])
+  @@index([userId, status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model PushSubscription {
+  id           String   @id @default(uuid())
+  endpoint     String   @unique
+  p256dh       String
+  auth         String
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  lastSuccessAt DateTime?
+  disabledAt   DateTime?
+
+  userId       String
+  user         User     @relation(fields: [userId], references: [idUser])
+
+  @@index([userId])
 }

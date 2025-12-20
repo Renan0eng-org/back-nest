@@ -8,9 +8,11 @@ import { FormModule } from './forms/form.module';
 import { LogsModule } from './logs/logs.module';
 import { PatientsModule } from './patients/patients.module';
 import { UserModule } from './user/user.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { PushModule } from './push/push.module';
 
 @Module({
-  imports: [AuthModule, DatabaseModule, FormModule, AcessoModule, UserModule, AppointmentsModule, PatientsModule, LogsModule],
+  imports: [AuthModule, DatabaseModule, FormModule, AcessoModule, UserModule, AppointmentsModule, PatientsModule, LogsModule, NotificationsModule, PushModule],
   providers: [AllExceptionsFilter],
 })
 export class AppModule {}
