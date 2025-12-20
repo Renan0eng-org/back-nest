@@ -1,18 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as webPush from 'web-push';
 import { PrismaService } from '../database/prisma.service';
-import webPush from 'web-push';
 
 @Injectable()
 export class PushService {
   private readonly logger = new Logger(PushService.name);
   constructor(private prisma: PrismaService) {
-    const subject = process.env.WEB_PUSH_SUBJECT || 'mailto:admin@example.com';
-    const publicKey = process.env.VAPID_PUBLIC_KEY || '';
-    const privateKey = process.env.VAPID_PRIVATE_KEY || '';
-    if (publicKey && privateKey) {
-      webPush.setVapidDetails(subject, publicKey, privateKey);
+    const subject = process.env.WEB_PUSH_SUBJECT;
+    const publicKey = process.env.VAPID_PUBLIC_KEY;
+    const privateKey = process.env.VAPID_PRIVATE_KEY;
+    if (publicKey && privateKey && publicKey.length > 0 && privateKey.length > 0) {
+      webPush.setVapidDetails(subject || 'mailto:admin@example.com', publicKey, privateKey);
+      this.logger.log('Web Push configured with VAPID keys.');
     } else {
-      this.logger.warn('VAPID keys missing; web-push disabled.');
+      this.logger.warn('VAPID keys missing; web-push disabled. Generate keys with: npx web-push generate-vapid-keys');
     }
   }
 

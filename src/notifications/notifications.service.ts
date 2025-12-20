@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { PushService } from '../push/push.service';
 import { CreateNotificationDto, TargetsDto } from './dto/create-notification.dto';
 import { ListNotificationsQuery } from './dto/list-notifications.dto';
-import { PushService } from '../push/push.service';
 
 @Injectable()
 export class NotificationsService {

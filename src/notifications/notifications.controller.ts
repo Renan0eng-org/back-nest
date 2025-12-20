@@ -1,8 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
-import { NotificationsService } from './notifications.service';
+import { Request } from 'express';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { ListNotificationsQuery } from './dto/list-notifications.dto';
-import { Request } from 'express';
+import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
 export class NotificationsController {
