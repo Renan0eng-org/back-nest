@@ -103,8 +103,6 @@ export class AuthController {
         const token = request.cookies['refresh_token'];
         if (!token) throw new UnauthorizedException('Token não fornecido');
 
-        if (!token) throw new UnauthorizedException('Token malformado');
-
         const dataToken = await this.authService.validateToken(token, { type: 'refresh' });
 
         const user = await this.authService.findUserById(dataToken.dataToken.sub);

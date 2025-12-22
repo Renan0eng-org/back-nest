@@ -1,35 +1,38 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
-import { Request } from 'express';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { User } from 'generated/prisma';
+import { GetUser } from 'src/auth/get-user.decorator';
+import { Menu } from 'src/auth/menu.decorator';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { ListNotificationsQuery } from './dto/list-notifications.dto';
 import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
+@Menu('notifications')
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
   @Post()
-  async create(@Body() dto: CreateNotificationDto, @Req() req: Request) {
-    const userId = (req as any).user?.idUser ?? (req as any).user?.id ?? null;
+  async create(@Body() dto: CreateNotificationDto, @GetUser() user: User) {
+    const userId = user.idUser;
     return this.notifications.create(dto, userId);
   }
 
   @Get()
-  async list(@Query() query: ListNotificationsQuery, @Req() req: Request) {
-    const userId = (req as any).user?.idUser ?? (req as any).user?.id;
+  async list(@Query() query: ListNotificationsQuery, @GetUser() user: User) {
+    const userId = user.idUser;
     return this.notifications.listForUser(userId, query);
   }
 
   @Get('unread-count')
-  async unreadCount(@Req() req: Request) {
-    const userId = (req as any).user?.idUser ?? (req as any).user?.id;
+  async unreadCount(@GetUser() user: User) {
+    const userId = user.idUser;
     const count = await this.notifications.unreadCount(userId);
     return { count };
   }
 
   @Patch(':id/read')
-  async markRead(@Param('id') id: string, @Body() body: { read?: boolean }, @Req() req: Request) {
-    const userId = (req as any).user?.idUser ?? (req as any).user?.id;
+  async markRead(@Param('id') id: string, @Body() body: { read?: boolean }, @GetUser() user: User) {
+    const userId = user.idUser;
     await this.notifications.markRead(userId, id, body?.read ?? true);
     return { status: 204 };
   }
@@ -37,16 +40,16 @@ export class NotificationsController {
   @Patch('read-all')
   async markAllRead(
     @Body() body: { category?: string; before?: string },
-    @Req() req: Request,
+    @GetUser() user: User,
   ) {
-    const userId = (req as any).user?.idUser ?? (req as any).user?.id;
+    const userId = user.idUser;
     await this.notifications.markAllRead(userId, body?.category, body?.before);
     return { status: 204 };
   }
 
   @Delete(':id')
-  async archive(@Param('id') id: string, @Req() req: Request) {
-    const userId = (req as any).user?.idUser ?? (req as any).user?.id;
+  async archive(@Param('id') id: string, @GetUser() user: User) {
+    const userId = user.idUser;
     await this.notifications.archive(userId, id);
     return { status: 204 };
   }
