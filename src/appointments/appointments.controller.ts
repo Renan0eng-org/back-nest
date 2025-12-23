@@ -3,6 +3,7 @@ import { Menu } from 'src/auth/menu.decorator';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
+import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
 
 @Controller('appointments')
 @Menu('agendamento')
@@ -81,6 +82,11 @@ export class AppointmentsController {
   @Put(':id')
   update(@Param('id') id: string, @Body() dto: UpdateAppointmentDto) {
     return this.service.update(id, dto);
+  }
+
+  @Put(':id/status')
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateAppointmentStatusDto) {
+    return this.service.updateStatus(id, dto.status);
   }
 
   @Delete(':id')

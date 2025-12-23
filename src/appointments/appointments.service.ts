@@ -303,6 +303,17 @@ export class AppointmentsService {
     return this.prisma.appointment.update({ where: { id }, data });
   }
 
+  async updateStatus(id: string, status: AppointmentStatus) {
+    const appointment = await this.prisma.appointment.findUnique({ where: { id } });
+    if (!appointment) throw new NotFoundException('Agendamento não encontrado');
+
+    return this.prisma.appointment.update({
+      where: { id },
+      data: { status },
+      include: { doctor: true, patient: true, response: true },
+    });
+  }
+
   async remove(id: string) {
     return this.prisma.appointment.update({ where: { id }, data: { status: AppointmentStatus.Cancelado } });
   }
