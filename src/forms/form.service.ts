@@ -645,6 +645,29 @@ export class FormService {
                 },
             });
 
+            // Se foi enviado attendanceId no DTO, criar vínculo em attendanceResponses
+            const attendanceId = (submitResponseDto as any).attendanceId;
+            if (attendanceId) {
+                // validar existência do atendimento
+                const attendance = await tx.attendance.findUnique({ where: { id: attendanceId } });
+                if (!attendance) {
+                    throw new NotFoundException('Atendimento para vincular não encontrado');
+                }
+
+                // Verificar se já existe vínculo
+                const existingLink = await tx.attendanceResponse.findFirst({
+                    where: { attendanceId, responseId: newResponse.idResponse },
+                });
+                if (!existingLink) {
+                    await tx.attendanceResponse.create({
+                        data: {
+                            attendanceId,
+                            responseId: newResponse.idResponse,
+                        },
+                    });
+                }
+            }
+
             return updated;
         });
     }
@@ -738,6 +761,27 @@ export class FormService {
                 },
             });
 
+            // Se foi enviado attendanceId no DTO, criar vínculo em attendanceResponses
+            const attendanceId = (submitResponseDto as any).attendanceId;
+            if (attendanceId) {
+                const attendance = await tx.attendance.findUnique({ where: { id: attendanceId } });
+                if (!attendance) {
+                    throw new NotFoundException('Atendimento para vincular não encontrado');
+                }
+
+                const existingLink = await tx.attendanceResponse.findFirst({
+                    where: { attendanceId, responseId },
+                });
+                if (!existingLink) {
+                    await tx.attendanceResponse.create({
+                        data: {
+                            attendanceId,
+                            responseId,
+                        },
+                    });
+                }
+            }
+
             return updated;
         });
     }
@@ -755,18 +799,31 @@ export class FormService {
             });
 
             if (!existingResponse) {
-                throw new Error('Response not found');
+                throw new NotFoundException('Resposta não encontrada');
             }
-            
-            await tx.response.delete({
-                where: {
-                    idResponse: responseId,
-                },
-            });
 
+            // Caso exista um agendamento associado a essa resposta, cancelar e desvincular
+            const existingAppt = await (tx as any).appointment.findFirst({ where: { responseId: responseId } });
+            if (existingAppt) {
+                await (tx as any).appointment.update({
+                    where: { id: existingAppt.id },
+                    data: {
+                        status: 'Cancelado',
+                        responseId: null,
+                    },
+                });
+            }
+
+            // remover respostas (answers) primeiro, depois a response
             await tx.answer.deleteMany({
                 where: {
                     responseId: responseId,
+                },
+            });
+
+            await tx.response.delete({
+                where: {
+                    idResponse: responseId,
                 },
             });
 
@@ -989,6 +1046,7 @@ export class FormService {
             const rows = await this.prisma.response.findMany({
                 where: baseWhere,
                 include: {
+                    attendanceResponses: true,
                     form: { select: { idForm: true, title: true, isScreening: true } },
                     user: { select: { idUser: true, name: true, email: true } },
                     answers: { 
@@ -1020,6 +1078,7 @@ export class FormService {
             this.prisma.response.findMany({
                 where: baseWhere,
                 include: {
+                    attendanceResponses: true,
                     form: { select: { idForm: true, title: true, isScreening: true } },
                     user: { select: { idUser: true, name: true, email: true } },
                     answers: { 

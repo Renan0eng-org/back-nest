@@ -27,4 +27,8 @@ export class SubmitResponseDto {
     @IsString()
     @IsOptional()
     userId?: string;
+
+    @IsString({ message: 'ID do atendimento deve ser uma string' })
+    @IsOptional()
+    attendanceId?: string;
 }

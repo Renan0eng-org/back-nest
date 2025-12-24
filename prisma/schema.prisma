@@ -58,6 +58,10 @@ model User {
   appointmentsDoctor Appointment[] @relation("AppointmentDoctor")
   appointmentsPatient  Appointment[] @relation("AppointmentPatient")
 
+  attendancesPatient       Attendance[] @relation("AttendancePatient")
+  attendancesProfessional  Attendance[] @relation("AttendanceProfessional")
+  attendancesCreated       Attendance[] @relation("AttendanceCreator")
+
   errorLogs     ErrorLog[]
 
   // Back-relations for notifications system
@@ -107,6 +111,7 @@ model Form {
   questions   Question[]
   responses   Response[]
   assignedUsers  User[] @relation("FormAssignedUsers")
+  assignedAttendances  Attendance[] @relation("FormAssignedAttendances")
   scoreRules  ScoreRule[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -177,6 +182,7 @@ model Response {
 
   // Appointments that reference this response (optional)
   appointments Appointment[]
+  attendanceResponses AttendanceResponse[] @relation("AttendanceResponses")
 
   @@index([formId])
   @@index([userId])
@@ -225,10 +231,107 @@ model Appointment {
   doctor   User?     @relation("AppointmentDoctor", fields: [doctorId], references: [idUser])
   patient  User      @relation("AppointmentPatient", fields: [patientId], references: [idUser])
   response Response? @relation(fields: [responseId], references: [idResponse])
+  
+  attendances Attendance[]
 
   @@index([doctorId])
   @@index([patientId])
   @@index([scheduledAt])
+}
+
+enum AttendanceStatus {
+  EmAndamento
+  Concluido
+  Cancelado
+}
+
+model Attendance {
+  id                  String           @id @default(cuid())
+  appointmentId       String?
+  patientId           String
+  professionalId      String
+  attendanceDate      DateTime
+  
+  // Informações Clínicas
+  chiefComplaint      String           // Queixa principal
+  presentingIllness   String?          // História da doença atual
+  medicalHistory      String?          // Histórico médico
+  physicalExamination String?          // Exame físico
+  diagnosis           String?          // Diagnóstico
+  treatment           String?          // Tratamento recomendado
+  
+  // Métricas Vitais
+  bloodPressure       String?          // Ex: 120/80
+  heartRate           Int?             // Batimentos por minuto
+  temperature         Decimal?  @db.Decimal(5, 2)  // Em Celsius
+  respiratoryRate     Int?             // Respirações por minuto
+  
+  // Status
+  status              AttendanceStatus @default(EmAndamento)
+  
+  // Auditoria
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  createdBy           String?
+  
+  // Relações
+  appointment         Appointment?     @relation(fields: [appointmentId], references: [id])
+  patient             User             @relation("AttendancePatient", fields: [patientId], references: [idUser])
+  professional        User             @relation("AttendanceProfessional", fields: [professionalId], references: [idUser])
+  creator             User?            @relation("AttendanceCreator", fields: [createdBy], references: [idUser])
+  
+  assignedForms       Form[]           @relation("FormAssignedAttendances")
+  responses           AttendanceResponse[]
+  prescriptions       AttendancePrescription[]
+  attachments         AttendanceAttachment[]
+  
+  @@index([appointmentId])
+  @@index([patientId])
+  @@index([professionalId])
+  @@index([attendanceDate])
+  @@index([status])
+}
+
+model AttendancePrescription {
+  id            String     @id @default(cuid())
+  attendanceId  String
+  medication    String
+  dosage        String     // Ex: "500mg"
+  frequency     String     // Ex: "8 em 8 horas"
+  duration      String     // Ex: "10 dias"
+  instructions  String?
+  createdAt     DateTime   @default(now())
+  
+  attendance    Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  
+  @@index([attendanceId])
+}
+
+model AttendanceAttachment {
+  id            String     @id @default(cuid())
+  attendanceId  String
+  fileName      String
+  fileUrl       String     @db.VarChar(512)
+  fileType      String?    // Ex: "image/jpeg", "application/pdf"
+  uploadedAt    DateTime   @default(now())
+  
+  attendance    Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  
+  @@index([attendanceId])
+}
+
+model AttendanceResponse {
+  id            String     @id @default(cuid())
+  attendanceId  String
+  responseId    String
+  createdAt     DateTime   @default(now())
+  
+  attendance    Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  response      Response   @relation("AttendanceResponses", fields: [responseId], references: [idResponse], onDelete: Cascade)
+  
+  @@unique([attendanceId, responseId])
+  @@index([attendanceId])
+  @@index([responseId])
 }
 
 model ErrorLog {

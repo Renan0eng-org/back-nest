@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AcessoModule } from './acesso/acesso.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { AttendancesModule } from './attendances/attendances.module';
 import { AuthModule } from './auth/auth.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { DatabaseModule } from './database/database.module';
@@ -12,7 +13,7 @@ import { PushModule } from './push/push.module';
 import { UserModule } from './user/user.module';
 
 @Module({
-  imports: [AuthModule, DatabaseModule, FormModule, AcessoModule, UserModule, AppointmentsModule, PatientsModule, LogsModule, NotificationsModule, PushModule],
+  imports: [AuthModule, DatabaseModule, FormModule, AcessoModule, UserModule, AppointmentsModule, AttendancesModule, PatientsModule, LogsModule, NotificationsModule, PushModule],
   providers: [AllExceptionsFilter],
 })
 export class AppModule {}
