@@ -253,7 +253,7 @@ model Attendance {
   attendanceDate      DateTime
   
   // Informações Clínicas
-  chiefComplaint      String           // Queixa principal
+  chiefComplaint      String?          // Queixa principal
   presentingIllness   String?          // História da doença atual
   medicalHistory      String?          // Histórico médico
   physicalExamination String?          // Exame físico
@@ -284,12 +284,29 @@ model Attendance {
   responses           AttendanceResponse[]
   prescriptions       AttendancePrescription[]
   attachments         AttendanceAttachment[]
+  medicalNotes        MedicalNote[]
   
   @@index([appointmentId])
   @@index([patientId])
   @@index([professionalId])
   @@index([attendanceDate])
   @@index([status])
+}
+
+model MedicalNote {
+  id            String     @id @default(cuid())
+  attendanceId  String
+  title         String     // Ex: "Queixa Principal", "Diagnóstico", "Notas Adicionais"
+  content       String     @db.Text  // HTML ou texto plano
+  mode          String     @default("simple")  // "advanced" (Quill) ou "simple" (Textarea)
+  order         Int        @default(0)  // Ordem de exibição
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  attendance    Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  
+  @@index([attendanceId])
+  @@index([attendanceId, order])
 }
 
 model AttendancePrescription {

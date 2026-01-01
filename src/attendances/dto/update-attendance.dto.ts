@@ -55,4 +55,27 @@ export class UpdateAttendanceDto {
   @IsOptional()
   @IsEnum(AttendanceStatus, { message: 'Status deve ser um dos valores: EmAndamento, Concluido, Cancelado' })
   status?: AttendanceStatus;
+
+  // Notas médicas adicionais (abas customizadas)
+  @IsOptional()
+  medicalNotes?: UpdateMedicalNoteDto[];
+}
+
+export class UpdateMedicalNoteDto {
+  @IsOptional()
+  @IsString({ message: 'Título deve ser uma string' })
+  title?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Conteúdo deve ser uma string' })
+  content?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Modo deve ser "advanced" ou "simple"' })
+  mode?: 'advanced' | 'simple';
+
+  @IsOptional()
+  @IsInt({ message: 'Ordem deve ser um número inteiro' })
+  @Min(0, { message: 'Ordem não pode ser negativa' })
+  order?: number;
 }

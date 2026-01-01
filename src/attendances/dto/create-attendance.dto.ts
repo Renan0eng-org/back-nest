@@ -18,9 +18,9 @@ export class CreateAttendanceDto {
   attendanceDate: string;
 
   // Informações Clínicas
-  @IsNotEmpty({ message: 'Queixa principal é obrigatória' })
+  @IsOptional()
   @IsString({ message: 'Queixa principal deve ser uma string' })
-  chiefComplaint: string;
+  chiefComplaint?: string;
 
   @IsOptional()
   @IsString({ message: 'História da doença atual deve ser uma string' })
@@ -64,4 +64,27 @@ export class CreateAttendanceDto {
   @Min(0, { message: 'Frequência respiratória deve ser maior ou igual a 0' })
   @Max(100, { message: 'Frequência respiratória deve ser menor ou igual a 100' })
   respiratoryRate?: number;
+
+  // Notas médicas adicionais (abas customizadas)
+  @IsOptional()
+  medicalNotes?: CreateMedicalNoteDto[];
+}
+
+export class CreateMedicalNoteDto {
+  @IsNotEmpty({ message: 'Título da nota é obrigatório' })
+  @IsString({ message: 'Título deve ser uma string' })
+  title: string;
+
+  @IsNotEmpty({ message: 'Conteúdo da nota é obrigatório' })
+  @IsString({ message: 'Conteúdo deve ser uma string' })
+  content: string;
+
+  @IsOptional()
+  @IsString({ message: 'Modo deve ser "advanced" ou "simple"' })
+  mode?: 'advanced' | 'simple';
+
+  @IsOptional()
+  @IsInt({ message: 'Ordem deve ser um número inteiro' })
+  @Min(0, { message: 'Ordem não pode ser negativa' })
+  order?: number;
 }

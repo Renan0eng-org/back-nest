@@ -1,4 +1,5 @@
 import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { CreateMedicalNoteDto } from './create-attendance.dto';
 
 export class CreateFromAppointmentDto {
   @IsNotEmpty({ message: 'Queixa principal é obrigatória' })
@@ -46,4 +47,8 @@ export class CreateFromAppointmentDto {
   @Min(0, { message: 'Frequência respiratória deve ser maior ou igual a 0' })
   @Max(100, { message: 'Frequência respiratória deve ser menor ou igual a 100' })
   respiratoryRate?: number;
+
+  // Notas médicas adicionais (abas customizadas)
+  @IsOptional()
+  medicalNotes?: CreateMedicalNoteDto[];
 }

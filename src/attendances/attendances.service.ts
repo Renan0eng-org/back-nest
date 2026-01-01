@@ -67,6 +67,17 @@ export class AttendancesService {
       data.creator = { connect: { idUser: userId } };
     }
 
+    if (dto.medicalNotes && dto.medicalNotes.length > 0) {
+      data.medicalNotes = {
+        create: dto.medicalNotes.map((note, index) => ({
+          title: note.title,
+          content: note.content,
+          mode: note.mode || 'simple',
+          order: note.order ?? index,
+        })),
+      };
+    }
+
     return this.prisma.attendance.create({
       data,
       include: {
@@ -75,6 +86,7 @@ export class AttendancesService {
         appointment: true,
         prescriptions: true,
         attachments: true,
+        medicalNotes: { orderBy: { order: 'asc' } },
       },
     });
   }
@@ -116,6 +128,17 @@ export class AttendancesService {
       data.creator = { connect: { idUser: userId } };
     }
 
+    if (dto.medicalNotes && dto.medicalNotes.length > 0) {
+      data.medicalNotes = {
+        create: dto.medicalNotes.map((note, index) => ({
+          title: note.title,
+          content: note.content,
+          mode: note.mode || 'simple',
+          order: note.order ?? index,
+        })),
+      };
+    }
+
     return this.prisma.attendance.create({
       data,
       include: {
@@ -124,6 +147,7 @@ export class AttendancesService {
         appointment: true,
         prescriptions: true,
         attachments: true,
+        medicalNotes: { orderBy: { order: 'asc' } },
       },
     });
   }
@@ -209,6 +233,7 @@ export class AttendancesService {
             professional: true,
             appointment: true,
             prescriptions: true,
+            medicalNotes: { orderBy: { order: 'asc' } },
           },
           orderBy: { attendanceDate: 'desc' },
         });
@@ -226,6 +251,7 @@ export class AttendancesService {
             professional: true,
             appointment: true,
             prescriptions: true,
+            medicalNotes: { orderBy: { order: 'asc' } },
           },
           orderBy: { attendanceDate: 'desc' },
           skip: (page - 1) * pageSize,
@@ -250,6 +276,7 @@ export class AttendancesService {
         prescriptions: true,
         attachments: true,
         creator: true,
+        medicalNotes: { orderBy: { order: 'asc' } },
         assignedForms: {
           include: {
             questions: {
@@ -320,6 +347,45 @@ export class AttendancesService {
     if (dto.respiratoryRate !== undefined) data.respiratoryRate = dto.respiratoryRate;
     if (dto.status !== undefined) data.status = dto.status;
 
+    // Handle medical notes update com transação
+    if (dto.medicalNotes !== undefined) {
+      const medicalNotes = dto.medicalNotes; // Type guard
+      return this.prisma.$transaction(async (tx) => {
+        // Deletar todas as notas médicas antigas
+        await tx.medicalNote.deleteMany({
+          where: { attendanceId: id },
+        });
+
+        // Criar novas notas se fornecidas
+        if (medicalNotes.length > 0) {
+          await tx.medicalNote.createMany({
+            data: medicalNotes.map((note, index) => ({
+              attendanceId: id,
+              title: note.title || `Nota ${index + 1}`,
+              content: note.content || '',
+              mode: note.mode || 'simple',
+              order: note.order ?? index,
+            })),
+          });
+        }
+
+        // Atualizar o atendimento com todos os dados
+        return tx.attendance.update({
+          where: { id },
+          data,
+          include: {
+            patient: true,
+            professional: true,
+            appointment: true,
+            prescriptions: true,
+            attachments: true,
+            medicalNotes: { orderBy: { order: 'asc' } },
+          },
+        });
+      });
+    }
+
+    // Se não houver atualização de notas, apenas atualizar o atendimento
     return this.prisma.attendance.update({
       where: { id },
       data,
@@ -329,6 +395,7 @@ export class AttendancesService {
         appointment: true,
         prescriptions: true,
         attachments: true,
+        medicalNotes: { orderBy: { order: 'asc' } },
       },
     });
   }
