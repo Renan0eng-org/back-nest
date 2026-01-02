@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsDateString, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateAttendanceDto {
   @IsOptional()
@@ -87,4 +87,8 @@ export class CreateMedicalNoteDto {
   @IsInt({ message: 'Ordem deve ser um número inteiro' })
   @Min(0, { message: 'Ordem não pode ser negativa' })
   order?: number;
+
+  @IsOptional()
+  @IsBoolean({ message: 'Permitir reutilização deve ser um booleano' })
+  allowFutureUse?: boolean;
 }

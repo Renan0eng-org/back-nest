@@ -74,6 +74,7 @@ export class AttendancesService {
           content: note.content,
           mode: note.mode || 'simple',
           order: note.order ?? index,
+          allowFutureUse: note.allowFutureUse ?? false,
         })),
       };
     }
@@ -135,6 +136,7 @@ export class AttendancesService {
           content: note.content,
           mode: note.mode || 'simple',
           order: note.order ?? index,
+          allowFutureUse: note.allowFutureUse ?? false,
         })),
       };
     }
@@ -365,6 +367,7 @@ export class AttendancesService {
               content: note.content || '',
               mode: note.mode || 'simple',
               order: note.order ?? index,
+              allowFutureUse: note.allowFutureUse ?? false,
             })),
           });
         }

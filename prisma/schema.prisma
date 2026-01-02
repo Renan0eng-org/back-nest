@@ -300,6 +300,7 @@ model MedicalNote {
   content       String     @db.Text  // HTML ou texto plano
   mode          String     @default("simple")  // "advanced" (Quill) ou "simple" (Textarea)
   order         Int        @default(0)  // Ordem de exibição
+  allowFutureUse Boolean   @default(false) // Indica se pode ser reutilizada em outros atendimentos
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   

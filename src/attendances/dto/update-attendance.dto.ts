@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { AttendanceStatus } from 'generated/prisma';
 
 export class UpdateAttendanceDto {
@@ -78,4 +78,8 @@ export class UpdateMedicalNoteDto {
   @IsInt({ message: 'Ordem deve ser um número inteiro' })
   @Min(0, { message: 'Ordem não pode ser negativa' })
   order?: number;
+
+  @IsOptional()
+  @IsBoolean({ message: 'Permitir reutilização deve ser um booleano' })
+  allowFutureUse?: boolean;
 }
