@@ -1374,10 +1374,10 @@
       ]
     },
     {
-      "name": "Push Notifications",
+      "name": "Push Notifications (Firebase)",
       "item": [
         {
-          "name": "Subscribe to Push",
+          "name": "Register Device",
           "request": {
             "method": "POST",
             "header": [
@@ -1392,7 +1392,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"subscription\": {\n    \"endpoint\": \"https://fcm.googleapis.com/...\",\n    \"keys\": {\n      \"p256dh\": \"...\",\n      \"auth\": \"...\"\n    }\n  }\n}"
+              "raw": "{\n  \"deviceToken\": \"FCM_device_token_from_client\",\n  \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/push/subscribe",
@@ -1402,7 +1402,32 @@
           }
         },
         {
-          "name": "Send Push Notification",
+          "name": "Unregister Device",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceToken\": \"FCM_device_token_to_remove\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/push/subscribe",
+              "host": ["{{baseUrl}}"],
+              "path": ["push", "subscribe"]
+            }
+          }
+        },
+        {
+          "name": "Send to Current User",
           "request": {
             "method": "POST",
             "header": [
@@ -1417,12 +1442,112 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"user_id\",\n  \"title\": \"Título da Notificação\",\n  \"body\": \"Corpo da notificação\",\n  \"data\": {\n    \"appointmentId\": \"appointment_id\"\n  }\n}"
+              "raw": "{\n  \"title\": \"Novo Agendamento\",\n  \"body\": \"Você tem um novo agendamento confirmado\",\n  \"data\": {\n    \"appointmentId\": \"apt_123\",\n    \"type\": \"appointment\"\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/push/send",
               "host": ["{{baseUrl}}"],
               "path": ["push", "send"]
+            }
+          }
+        },
+        {
+          "name": "Send to Multiple Users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\"user_1\", \"user_2\", \"user_3\"],\n  \"title\": \"Anúncio Importante\",\n  \"body\": \"Há atualizações no sistema\",\n  \"data\": {\n    \"type\": \"announcement\",\n    \"priority\": \"high\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/push/send-multiple",
+              "host": ["{{baseUrl}}"],
+              "path": ["push", "send-multiple"]
+            }
+          }
+        },
+        {
+          "name": "Send to Topic",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"announcements\",\n  \"title\": \"Notícia Clínica\",\n  \"body\": \"Nova diretriz de tratamento disponível\",\n  \"data\": {\n    \"newsId\": \"news_456\",\n    \"type\": \"clinical_update\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/push/send-topic",
+              "host": ["{{baseUrl}}"],
+              "path": ["push", "send-topic"]
+            }
+          }
+        },
+        {
+          "name": "Subscribe Users to Topic",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\"user_1\", \"user_2\"],\n  \"topic\": \"announcements\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/push/subscribe-topic",
+              "host": ["{{baseUrl}}"],
+              "path": ["push", "subscribe-topic"]
+            }
+          }
+        },
+        {
+          "name": "Unsubscribe Users from Topic",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\"user_1\"],\n  \"topic\": \"announcements\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/push/subscribe-topic",
+              "host": ["{{baseUrl}}"],
+              "path": ["push", "subscribe-topic"]
             }
           }
         }

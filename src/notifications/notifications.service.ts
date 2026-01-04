@@ -133,13 +133,22 @@ export class NotificationsService {
     });
 
     for (const r of recipients) {
+      // Construir payload com tipos corretos
+      const data: Record<string, string> = {};
+      
+      // Converter data para Record<string, string>
+      if (r.notification.data && typeof r.notification.data === 'object') {
+        for (const [key, value] of Object.entries(r.notification.data)) {
+          data[key] = String(value);
+        }
+      }
+
       const payload = {
         title: r.notification.title,
-        body: r.notification.body ?? undefined,
-        data: r.notification.data ?? undefined,
-        badge: '/icons/badge.png',
-        icon: '/icons/icon.png',
+        body: r.notification.body || 'Nova notificação',
+        data: Object.keys(data).length > 0 ? data : undefined,
       };
+
       const ok = await this.push.sendToUser(r.userId, payload);
       if (ok) {
         await this.prisma.userNotification.update({

@@ -1,64 +1,239 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as webPush from 'web-push';
+import * as admin from 'firebase-admin';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class PushService {
   private readonly logger = new Logger(PushService.name);
+
   constructor(private prisma: PrismaService) {
-    const subject = process.env.WEB_PUSH_SUBJECT;
-    const publicKey = process.env.VAPID_PUBLIC_KEY;
-    const privateKey = process.env.VAPID_PRIVATE_KEY;
-    if (publicKey && privateKey && publicKey.length > 0 && privateKey.length > 0) {
-      webPush.setVapidDetails(subject || 'mailto:admin@example.com', publicKey, privateKey);
-      this.logger.log('Web Push configured with VAPID keys.');
-    } else {
-      this.logger.warn('VAPID keys missing; web-push disabled. Generate keys with: npx web-push generate-vapid-keys');
-    }
+    this.initializeFirebase();
   }
 
-  async subscribe(userId: string, dto: { endpoint: string; keys: { p256dh: string; auth: string }; userAgent?: string }) {
-    const existing = await this.prisma.pushSubscription.findUnique({ where: { endpoint: dto.endpoint } });
-    if (existing) {
-      const updated = await this.prisma.pushSubscription.update({
-        where: { endpoint: dto.endpoint },
-        data: { userId, p256dh: dto.keys.p256dh, auth: dto.keys.auth, userAgent: dto.userAgent ?? existing.userAgent, disabledAt: null },
-      });
-      return updated.id;
-    }
-    const created = await this.prisma.pushSubscription.create({
-      data: { userId, endpoint: dto.endpoint, p256dh: dto.keys.p256dh, auth: dto.keys.auth, userAgent: dto.userAgent },
-    });
-    return created.id;
-  }
-
-  async disable(endpoint: string) {
-    await this.prisma.pushSubscription.updateMany({ where: { endpoint }, data: { disabledAt: new Date() } });
-  }
-
-  async sendToUser(userId: string, payload: any): Promise<boolean> {
-    const subs = await this.prisma.pushSubscription.findMany({ where: { userId, disabledAt: null } });
-    if (!subs.length) return false;
-    let deliveredAny = false;
-    for (const s of subs) {
+  private initializeFirebase() {
+    if (!admin.apps.length) {
       try {
-        await webPush.sendNotification(
-          {
-            endpoint: s.endpoint,
-            keys: { p256dh: s.p256dh, auth: s.auth },
-          } as any,
-          JSON.stringify(payload),
-        );
-        deliveredAny = true;
-        await this.prisma.pushSubscription.update({ where: { id: s.id }, data: { lastSuccessAt: new Date() } });
-      } catch (err: any) {
-        const statusCode = err?.statusCode || err?.status || 0;
-        if (statusCode === 404 || statusCode === 410) {
-          await this.prisma.pushSubscription.update({ where: { id: s.id }, data: { disabledAt: new Date() } });
-        }
-        this.logger.warn(`web-push error for ${s.id}: ${statusCode}`);
+        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+          ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+          : require('../../../firebase-adminsdk.json');
+
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+        });
+
+        this.logger.log('Firebase Admin SDK initialized successfully');
+      } catch (error) {
+        this.logger.error('Failed to initialize Firebase Admin SDK:', error);
       }
     }
-    return deliveredAny;
+  }
+
+  /**
+   * Subscribe user to push notifications using FCM device token
+   * @param userId User ID
+   * @param dto Object containing FCM device token
+   */
+  async subscribe(userId: string, dto: { deviceToken: string; userAgent?: string }) {
+    try {
+      const existing = await this.prisma.pushSubscription.findUnique({
+        where: { endpoint: dto.deviceToken },
+      });
+
+      if (existing) {
+        const updated = await this.prisma.pushSubscription.update({
+          where: { endpoint: dto.deviceToken },
+          data: {
+            userId,
+            userAgent: dto.userAgent ?? existing.userAgent,
+            disabledAt: null,
+          },
+        });
+        return updated.id;
+      }
+
+      const created = await this.prisma.pushSubscription.create({
+        data: {
+          userId,
+          endpoint: dto.deviceToken,
+          p256dh: 'firebase', // Placeholder for FCM
+          auth: 'firebase', // Placeholder for FCM
+          userAgent: dto.userAgent,
+        },
+      });
+
+      return created.id;
+    } catch (error) {
+      this.logger.error('Error subscribing user to push:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unsubscribe user from push notifications
+   * @param deviceToken FCM device token
+   */
+  async disable(deviceToken: string) {
+    try {
+      await this.prisma.pushSubscription.updateMany({ 
+        where: { endpoint: deviceToken },
+        data: { disabledAt: new Date() } 
+      });
+    } catch (error) {
+      this.logger.error('Error disabling push subscription:', error);
+    }
+  }
+
+  /**
+   * Send push notification to user using Firebase Cloud Messaging
+   * @param userId User ID
+   * @param payload Notification payload
+   */
+  async sendToUser(userId: string, payload: { title: string; body: string; data?: Record<string, string> }): Promise<boolean> {
+    try {
+      const subs = await this.prisma.pushSubscription.findMany({
+        where: { userId, disabledAt: null },
+      });
+
+      if (!subs.length) {
+        this.logger.warn(`No active subscriptions found for user ${userId}`);
+        return false;
+      }
+
+      let deliveredAny = false;
+
+      for (const sub of subs) {
+        try {
+          const message = {
+            notification: {
+              title: payload.title,
+              body: payload.body,
+            },
+            data: payload.data || {},
+            token: sub.endpoint, // FCM device token
+          };
+
+          const response = await admin.messaging().send(message as any);
+          deliveredAny = true;
+
+          await this.prisma.pushSubscription.update({
+            where: { id: sub.id },
+            data: { lastSuccessAt: new Date() },
+          });
+
+          this.logger.log(`Notification sent successfully: ${response}`);
+        } catch (error: any) {
+          this.logger.error(`Error sending notification to device ${sub.id}:`, error);
+
+          // If token is invalid, disable the subscription
+          if (
+            error?.code === 'messaging/invalid-registration-token' ||
+            error?.code === 'messaging/registration-token-not-registered'
+          ) {
+            await this.prisma.pushSubscription.update({
+              where: { id: sub.id },
+              data: { disabledAt: new Date() },
+            });
+          }
+        }
+      }
+
+      return deliveredAny;
+    } catch (error) {
+      this.logger.error('Error sending notification to user:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send push notification to multiple users
+   * @param userIds Array of user IDs
+   * @param payload Notification payload
+   */
+  async sendToMultipleUsers(
+    userIds: string[],
+    payload: { title: string; body: string; data?: Record<string, string> },
+  ): Promise<number> {
+    let successCount = 0;
+
+    for (const userId of userIds) {
+      const success = await this.sendToUser(userId, payload);
+      if (success) successCount++;
+    }
+
+    return successCount;
+  }
+
+  /**
+   * Send notification to topic (supports wildcards in FCM)
+   * @param topic Topic name
+   * @param payload Notification payload
+   */
+  async sendToTopic(
+    topic: string,
+    payload: { title: string; body: string; data?: Record<string, string> },
+  ): Promise<string> {
+    try {
+      const message = {
+        notification: {
+          title: payload.title,
+          body: payload.body,
+        },
+        data: payload.data || {},
+        topic: topic,
+      };
+
+      const response = await admin.messaging().send(message as any);
+      this.logger.log(`Message sent to topic ${topic}: ${response}`);
+      return response;
+    } catch (error) {
+      this.logger.error(`Error sending message to topic ${topic}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Subscribe user to a topic
+   * @param userIds User IDs to subscribe
+   * @param topic Topic name
+   */
+  async subscribeToTopic(userIds: string[], topic: string): Promise<void> {
+    try {
+      const subs = await this.prisma.pushSubscription.findMany({
+        where: { userId: { in: userIds }, disabledAt: null },
+      });
+
+      const tokens = subs.map((s) => s.endpoint);
+
+      if (tokens.length > 0) {
+        await admin.messaging().subscribeToTopic(tokens, topic);
+        this.logger.log(`Subscribed ${tokens.length} devices to topic: ${topic}`);
+      }
+    } catch (error) {
+      this.logger.error(`Error subscribing to topic ${topic}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unsubscribe user from a topic
+   * @param userIds User IDs to unsubscribe
+   * @param topic Topic name
+   */
+  async unsubscribeFromTopic(userIds: string[], topic: string): Promise<void> {
+    try {
+      const subs = await this.prisma.pushSubscription.findMany({
+        where: { userId: { in: userIds }, disabledAt: null },
+      });
+
+      const tokens = subs.map((s) => s.endpoint);
+
+      if (tokens.length > 0) {
+        await admin.messaging().unsubscribeFromTopic(tokens, topic);
+        this.logger.log(`Unsubscribed ${tokens.length} devices from topic: ${topic}`);
+      }
+    } catch (error) {
+      this.logger.error(`Error unsubscribing from topic ${topic}:`, error);
+      throw error;
+    }
   }
 }
