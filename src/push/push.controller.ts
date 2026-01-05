@@ -2,16 +2,16 @@ import { Body, Controller, Delete, Post, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { Menu } from 'src/auth/menu.decorator';
 import {
-    SendNotificationDto,
-    SendToMultipleUsersDto,
-    SendToTopicDto,
-    SubscribeDto,
-    SubscribeToTopicDto,
+  SendNotificationDto,
+  SendToMultipleUsersDto,
+  SendToTopicDto,
+  SubscribeDto,
+  SubscribeToTopicDto,
 } from './dto/subscribe.dto';
 import { PushService } from './push.service';
 
 @Controller('push')
-@Menu('push')
+@Menu('')
 export class PushController {
   constructor(private readonly push: PushService) {}
 
