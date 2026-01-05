@@ -1,11 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
+import { NotificationHelperService } from 'src/notifications/notification-helper.service';
 import { SaveFormDto } from './dto/save-form.dto';
 import { SubmitResponseDto } from './dto/submit-response.dto';
 
 @Injectable()
 export class FormService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private notificationHelper: NotificationHelperService,
+    ) { }
 
     // Ensure score rule ranges do not overlap within the same form
     private ensureNoOverlap(rules: { minScore: number; maxScore: number; idScoreRule?: string }[]) {
@@ -70,6 +74,14 @@ export class FormService {
     }
 
     async assignUsers(idForm: string, userIds: string[]) {
+        // Busca o formulário para obter o título
+        const form = await this.prisma.form.findUnique({
+            where: { idForm },
+            select: { title: true },
+        });
+
+        if (!form) throw new NotFoundException('Formulário não encontrado');
+
         await this.prisma.form.update({
             where: {
                 idForm,
@@ -90,6 +102,20 @@ export class FormService {
                     },
                 },
             });
+
+            // Envia notificação para cada paciente atribuído
+            for (const userId of userIds) {
+                try {
+                    await this.notificationHelper.notifyNewPendingForm(
+                        userId,
+                        form.title,
+                        idForm,
+                    );
+                } catch (error) {
+                    // Log do erro mas não bloqueia a atribuição
+                    console.error(`Erro ao enviar notificação para usuário ${userId}:`, error);
+                }
+            }
         }
 
         return { success: true };

@@ -107,7 +107,7 @@ export class PushService {
             notification: {
               title: payload.title,
               body: payload.body,
-              imageUrl: payload.imageUrl || 'https://prefeitura.renannardi.com/logo.webp',
+              imageUrl: payload.imageUrl || undefined,
             },
             data: payload.data || {},
             token: sub.endpoint, // FCM device token
@@ -182,7 +182,7 @@ export class PushService {
         notification: {
           title: payload.title,
           body: payload.body,
-          imageUrl: payload.imageUrl || 'https://prefeitura.renannardi.com/logo.webp',
+          imageUrl: payload.imageUrl || undefined,
         },
         data: payload.data || {},
         topic: topic,
