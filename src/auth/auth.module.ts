@@ -33,6 +33,7 @@ import { RefreshTokenGuard } from './refresh-token.guard';
     JwtModule,
     RefreshTokenGuard,
     AppTokenGuard,
+    MenuPermissionGuard,
   ]
 })
 export class AuthModule {}
