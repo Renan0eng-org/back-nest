@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Post, Req } from '@nestjs/common';
 import { Request } from 'express';
+import { AuthService } from 'src/auth/auth.service';
 import { Menu } from 'src/auth/menu.decorator';
 import {
   SendNotificationDto,
@@ -13,7 +14,10 @@ import { PushService } from './push.service';
 @Controller('push')
 @Menu('')
 export class PushController {
-  constructor(private readonly push: PushService) {}
+  constructor(
+    private readonly push: PushService,
+    private readonly authService: AuthService,
+  ) { }
 
   /**
    * Subscribe device to push notifications
@@ -21,7 +25,25 @@ export class PushController {
    */
   @Post('subscribe')
   async subscribe(@Body() dto: SubscribeDto, @Req() req: Request) {
-    const userId = (req as any).user?.idUser ?? (req as any).user?.id;
+    let token: string | undefined = undefined;
+    let tokenType: 'access' | 'refresh' | 'any' = 'any';
+
+    if (req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+      tokenType = 'access';
+    } else if (req.cookies && req.cookies['refresh_token']) {
+      token = req.cookies['refresh_token'];
+      tokenType = 'refresh';
+    }
+
+    if (!token) {
+      throw new Error('Token não fornecido.');
+    }
+
+    // Validate token and fetch user with nivel_acesso + menus
+    const validated = await this.authService.validateToken(token, { type: tokenType });
+    const user = await this.authService.findUserById(validated.dataToken.sub);
+    const userId = user.idUser;
     const id = await this.push.subscribe(userId, dto);
     return {
       id,
@@ -46,7 +68,25 @@ export class PushController {
    */
   @Post('send')
   async sendToUser(@Body() dto: SendNotificationDto, @Req() req: Request) {
-    const userId = (req as any).user?.idUser ?? (req as any).user?.id;
+    let token: string | undefined = undefined;
+    let tokenType: 'access' | 'refresh' | 'any' = 'any';
+
+    if (req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+      tokenType = 'access';
+    } else if (req.cookies && req.cookies['refresh_token']) {
+      token = req.cookies['refresh_token'];
+      tokenType = 'refresh';
+    }
+
+    if (!token) {
+      throw new Error('Token não fornecido.');
+    }
+
+    // Validate token and fetch user with nivel_acesso + menus
+    const validated = await this.authService.validateToken(token, { type: tokenType });
+    const user = await this.authService.findUserById(validated.dataToken.sub);
+    const userId = user.idUser;
     const success = await this.push.sendToUser(userId, dto);
     return {
       success,
