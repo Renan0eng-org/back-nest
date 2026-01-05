@@ -21,6 +21,10 @@ export class SendNotificationDto {
 
   @IsOptional()
   data?: Record<string, string>;
+
+  @IsOptional()
+  @IsString({ message: 'URL da imagem deve ser uma string' })
+  imageUrl?: string;
 }
 
 export class SendToMultipleUsersDto {
@@ -37,6 +41,10 @@ export class SendToMultipleUsersDto {
 
   @IsOptional()
   data?: Record<string, string>;
+
+  @IsOptional()
+  @IsString({ message: 'URL da imagem deve ser uma string' })
+  imageUrl?: string;
 }
 
 export class SendToTopicDto {
@@ -54,6 +62,10 @@ export class SendToTopicDto {
 
   @IsOptional()
   data?: Record<string, string>;
+
+  @IsOptional()
+  @IsString({ message: 'URL da imagem deve ser uma string' })
+  imageUrl?: string;
 }
 
 export class SubscribeToTopicDto {

@@ -87,7 +87,12 @@ export class PushController {
     const validated = await this.authService.validateToken(token, { type: tokenType });
     const user = await this.authService.findUserById(validated.dataToken.sub);
     const userId = user.idUser;
-    const success = await this.push.sendToUser(userId, dto);
+    const success = await this.push.sendToUser(userId, {
+      title: dto.title,
+      body: dto.body,
+      data: dto.data,
+      imageUrl: dto.imageUrl,
+    });
     return {
       success,
       message: success ? 'Notificação enviada com sucesso' : 'Falha ao enviar notificação',
@@ -103,6 +108,7 @@ export class PushController {
       title: dto.title,
       body: dto.body,
       data: dto.data,
+      imageUrl: dto.imageUrl,
     });
 
     return {
@@ -121,6 +127,7 @@ export class PushController {
       title: dto.title,
       body: dto.body,
       data: dto.data,
+      imageUrl: dto.imageUrl,
     });
 
     return {

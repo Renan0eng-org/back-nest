@@ -88,7 +88,7 @@ export class PushService {
    * @param userId User ID
    * @param payload Notification payload
    */
-  async sendToUser(userId: string, payload: { title: string; body: string; data?: Record<string, string> }): Promise<boolean> {
+  async sendToUser(userId: string, payload: { title: string; body: string; data?: Record<string, string>; imageUrl?: string }): Promise<boolean> {
     try {
       const subs = await this.prisma.pushSubscription.findMany({
         where: { userId, disabledAt: null },
@@ -103,16 +103,19 @@ export class PushService {
 
       for (const sub of subs) {
         try {
-          const message = {
+          const message: admin.messaging.Message = {
             notification: {
               title: payload.title,
               body: payload.body,
+              imageUrl: payload.imageUrl || 'https://prefeitura.renannardi.com/logo.webp',
             },
             data: payload.data || {},
             token: sub.endpoint, // FCM device token
           };
 
-          const response = await admin.messaging().send(message as any);
+          this.logger.debug(`Sending notification to token: ${sub.endpoint.substring(0, 20)}...`);
+
+          const response = await admin.messaging().send(message);
           deliveredAny = true;
 
           await this.prisma.pushSubscription.update({
@@ -122,13 +125,15 @@ export class PushService {
 
           this.logger.log(`Notification sent successfully: ${response}`);
         } catch (error: any) {
-          this.logger.error(`Error sending notification to device ${sub.id}:`, error);
+          this.logger.error(`Error sending notification to device ${sub.id} (token: ${sub.endpoint.substring(0, 20)}...):`, error);
 
           // If token is invalid, disable the subscription
           if (
             error?.code === 'messaging/invalid-registration-token' ||
-            error?.code === 'messaging/registration-token-not-registered'
+            error?.code === 'messaging/registration-token-not-registered' ||
+            error?.codePrefix === 'messaging' && error?.message?.includes('not a valid FCM registration token')
           ) {
+            this.logger.warn(`Disabling invalid push subscription ${sub.id}`);
             await this.prisma.pushSubscription.update({
               where: { id: sub.id },
               data: { disabledAt: new Date() },
@@ -151,7 +156,7 @@ export class PushService {
    */
   async sendToMultipleUsers(
     userIds: string[],
-    payload: { title: string; body: string; data?: Record<string, string> },
+    payload: { title: string; body: string; data?: Record<string, string>; imageUrl?: string },
   ): Promise<number> {
     let successCount = 0;
 
@@ -170,13 +175,14 @@ export class PushService {
    */
   async sendToTopic(
     topic: string,
-    payload: { title: string; body: string; data?: Record<string, string> },
+    payload: { title: string; body: string; data?: Record<string, string>; imageUrl?: string },
   ): Promise<string> {
     try {
       const message = {
         notification: {
           title: payload.title,
           body: payload.body,
+          imageUrl: payload.imageUrl || 'https://prefeitura.renannardi.com/logo.webp',
         },
         data: payload.data || {},
         topic: topic,
