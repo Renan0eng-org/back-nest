@@ -6,7 +6,8 @@ services:
     container_name: back-prefeitura
     ports:
       - "4000:3000"
-    env_file: .env
+    env_file:
+      - /opt/back-prefeitura/.env
     depends_on:
       - db
     restart: always

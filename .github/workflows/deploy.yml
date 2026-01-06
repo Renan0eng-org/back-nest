@@ -26,10 +26,9 @@ jobs:
             docker rm -f back-prefeitura || true
             docker pull devnardi/back-prefeitura:latest
             docker run -d \
-            --name back-prefeitura \
-            -p 4000:4000 \
-            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-            -e JWT_ACCESS_SECRET="${{ secrets.JWT_ACCESS_SECRET }}" \
-            -e FIREBASE_SERVICE_ACCOUNT="${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" \
-            -e CORS="https://prefeitura.renannardi.com" \
-            devnardi/back-prefeitura:latest
+              --name back-prefeitura \
+              -p 4000:3000 \
+              --env-file /opt/back-prefeitura/.env \
+              devnardi/back-prefeitura:latest
+
+
