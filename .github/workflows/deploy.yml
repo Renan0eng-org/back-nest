@@ -30,5 +30,6 @@ jobs:
             -p 4000:4000 \
             -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             -e JWT_ACCESS_SECRET="${{ secrets.JWT_ACCESS_SECRET }}" \
+            -e FIREBASE_SERVICE_ACCOUNT="${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" \
             -e CORS="https://prefeitura.renannardi.com" \
             devnardi/back-prefeitura:latest
