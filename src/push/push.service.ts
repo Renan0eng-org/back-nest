@@ -13,13 +13,18 @@ export class PushService {
   private initializeFirebase() {
     if (!admin.apps.length) {
       try {
-        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-          ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-          : require('../../../firebase-adminsdk.json');
+        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64
+          ? JSON.parse(
+            Buffer.from(
+              process.env.FIREBASE_SERVICE_ACCOUNT_BASE64,
+              'base64'
+            ).toString('utf8')
+          )
+          : require('../../../firebase-adminsdk.json')
 
         admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
-        });
+        })
 
         this.logger.log('Firebase Admin SDK initialized successfully');
       } catch (error) {
@@ -74,9 +79,9 @@ export class PushService {
    */
   async disable(deviceToken: string) {
     try {
-      await this.prisma.pushSubscription.updateMany({ 
+      await this.prisma.pushSubscription.updateMany({
         where: { endpoint: deviceToken },
-        data: { disabledAt: new Date() } 
+        data: { disabledAt: new Date() }
       });
     } catch (error) {
       this.logger.error('Error disabling push subscription:', error);
