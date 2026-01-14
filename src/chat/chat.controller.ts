@@ -14,11 +14,13 @@ import {
 import { Request } from 'express';
 import { AppTokenGuard } from 'src/auth/app-token.guard';
 import { AuthService } from 'src/auth/auth.service';
+import { Menu } from 'src/auth/menu.decorator';
 import { ChatService } from './chat.service';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 
 @Controller('chats')
+@Menu('chat-ai')
 @UseGuards(AppTokenGuard)
 export class ChatController {
   constructor(
