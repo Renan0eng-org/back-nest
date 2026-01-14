@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Public } from 'src/auth/public.decorator';
 import { AuthService } from './auth.service';
@@ -18,8 +18,12 @@ export class AuthController {
     @Post('login')
     @Public()
     async login(@Body() data: LoginUserDto) {
-        const user = await this.authService.validateUser(data.email, data.password);
-        const access_token = await this.authService.login({ idUser: user.idUser, email: user.email });
+        if (!data.cpf) {
+            throw new BadRequestException('CPF é obrigatório para login padrão');
+        }
+
+        const user = await this.authService.validateUser(data.cpf, data.password);
+        const access_token = await this.authService.login({ idUser: user.idUser, email: user.email, cpf: user.cpf });
         return { access_token, user };
     }
 
@@ -28,6 +32,10 @@ export class AuthController {
         @Body() data: LoginUserDto,
         @Res({ passthrough: true }) response: Response,
     ) {
+        if (!data.email) {
+            throw new BadRequestException('Email é obrigatório para login web');
+        }
+
         const user = await this.authService.validateUserWeb(data.email, data.password);
 
         const { accessToken, refreshToken } = await this.authService.loginWeb({
