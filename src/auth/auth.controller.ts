@@ -23,7 +23,8 @@ export class AuthController {
         }
 
         const user = await this.authService.validateUser(data.cpf, data.password);
-        const access_token = await this.authService.login({ idUser: user.idUser, email: user.email, cpf: user.cpf });
+        const payload: any = { idUser: user.idUser, email: user.email, cpf: user.cpf };
+        const access_token = await this.authService.login(payload);
         return { access_token, user };
     }
 
