@@ -42,10 +42,10 @@ export class AuthService {
         return userWithoutPassword;
     }
 
-    async validateUserWeb(cpf: string, password: string) {
+    async validateUserWeb(email: string, password: string) {
         const user = await this.prisma.user.findUnique({
             where: {
-                cpf,
+                email,
                 type: { not: { in: ['PACIENTE'] } }
             }
         });
@@ -63,10 +63,10 @@ export class AuthService {
         return userWithoutPassword;
     }
 
-    async validateUser(email: string, password: string) {
+    async validateUser(cpf: string, password: string) {
         const user = await this.prisma.user.findUnique({
             where: {
-                email,
+                cpf,
             }
         });
 
