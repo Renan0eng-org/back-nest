@@ -13,5 +13,6 @@ import { FormService } from './form.service';
     ], 
     controllers: [FormController],
     providers: [FormService],
+    exports: [FormService],
 })
 export class FormModule { }

@@ -17,7 +17,8 @@ DECLARE
     'agendamento',
     'esteira-pacientes',
     'encaminhamento',
-    'log'
+    'log',
+    'chat-ai'
   ];
 BEGIN
   -------------------------------------------------------------------

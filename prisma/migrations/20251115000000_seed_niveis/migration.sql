@@ -77,4 +77,9 @@ INSERT INTO "Menu_Acesso" ("nome", "slug", "visualizar", "criar", "editar", "exc
 SELECT 'Esteira de Pacientes', 'esteira-pacientes', TRUE, TRUE, TRUE, TRUE, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM "Menu_Acesso" WHERE "slug" = 'esteira-pacientes');
 
+-- chat-ai
+INSERT INTO "Menu_Acesso" ("nome", "slug", "visualizar", "criar", "editar", "excluir", "relatorio")
+SELECT 'Chat AI', 'chat-ai', TRUE, TRUE, TRUE, TRUE, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM "Menu_Acesso" WHERE "slug" = 'chat-ai');
+
 COMMIT;

@@ -68,6 +68,9 @@ model User {
   createdNotifications Notification[] @relation("NotificationCreatedBy")
   userNotifications   UserNotification[]
   pushSubscriptions   PushSubscription[]
+  
+  // Chat relations
+  chats         Chat[]
 
   @@index([idUser])
   @@index([user_id_create])
@@ -434,4 +437,35 @@ model PushSubscription {
   user         User     @relation(fields: [userId], references: [idUser])
 
   @@index([userId])
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+model Chat {
+  idChat      String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [idUser], onDelete: Cascade)
+  title       String      @default("Nova Conversa")
+  messages    Message[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  active      Boolean     @default(true)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Message {
+  idMessage   String      @id @default(uuid())
+  chatId      String
+  chat        Chat        @relation(fields: [chatId], references: [idChat], onDelete: Cascade)
+  role        ChatRole
+  content     String      @db.Text
+  createdAt   DateTime    @default(now())
+
+  @@index([chatId])
+  @@index([createdAt])
 }
