@@ -49,6 +49,7 @@ model User {
   exames         Boolean?  @default(false)
   examesDetalhes String?
   alergias       String?
+  autoCadastro   Boolean?    @default(false)
 
   fromAssigned   Form[] @relation("FormAssignedUsers")
 

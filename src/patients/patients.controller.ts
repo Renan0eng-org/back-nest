@@ -1,17 +1,23 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UnauthorizedException, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, UnauthorizedException, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthService } from 'src/auth/auth.service';
 import { Menu } from 'src/auth/menu.decorator';
+import { Public } from 'src/auth/public.decorator';
 import { RefreshTokenGuard } from 'src/auth/refresh-token.guard';
 import { RegisterPatientDto } from './dto/register-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 import { PatientsService } from './patients.service';
+import { PublicPatientService } from './public-patient.service';
 
 @Controller('patients')
 @UseGuards(RefreshTokenGuard)
 @Menu('paciente')
 export class PatientsController {
-    constructor(private readonly patientsService: PatientsService, private readonly authService: AuthService) { }
+    constructor(
+        private readonly patientsService: PatientsService,
+        private readonly publicPatientService: PublicPatientService,
+        private readonly authService: AuthService,
+    ) { }
 
     @Get()
     findAll(
@@ -81,6 +87,13 @@ export class PatientsController {
         return this.patientsService.create(createData);
     }
 
+    @Post('public')
+    @Public()
+    @UsePipes(new ValidationPipe({ whitelist: true }))
+    createPublic(@Body() dto: RegisterPatientDto) {
+        return this.publicPatientService.createPublic(dto);
+    }
+
     @Put(':id')
     @UsePipes(new ValidationPipe({ whitelist: true }))
     update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
@@ -109,5 +122,10 @@ export class PatientsController {
         const deleterId = dataToken.sub || dataToken.idUser || dataToken.id;
 
         return this.patientsService.remove(id, deleterId);
+    }
+
+    @Patch(':id/accept-registration')
+    async acceptRegistration(@Param('id') id: string) {
+        return this.patientsService.acceptRegistration(id);
     }
 }

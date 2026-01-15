@@ -24,6 +24,7 @@ const patientSelect = Prisma.validator<Prisma.UserSelect>()({
     exames: true,
     examesDetalhes: true,
     alergias: true,
+    autoCadastro: true,
     nivel_acesso: {
         select: {
             idNivelAcesso: true,
@@ -88,6 +89,9 @@ export class PatientsService {
         if (typeof filters?.active === 'boolean') {
             where.active = filters.active;
         }
+        if (typeof filters?.autoCadastro === 'boolean') {
+            where.autoCadastro = filters.autoCadastro;
+        }
 
         if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
             return this.prisma.user.findMany({
@@ -111,7 +115,7 @@ export class PatientsService {
             }),
         ]);
 
-        return { total, page, pageSize, data };
+        return { total, page, pageSize, data:data.map((d) => ({ ...d, password: undefined, cpf: d.cpf.split('_ALTO_CADASTRO_')[0] })) };
     }
 
     async findOne(id: string) {
@@ -267,6 +271,34 @@ export class PatientsService {
             return { success: true };
         } catch (e) {
             throw new BadRequestException('Não foi possível deletar paciente');
+        }
+    }
+
+    async acceptRegistration(id: string) {
+        try {
+            const user = await this.prisma.user.findUnique({
+                where: { idUser: id },
+                select: { autoCadastro: true, active: true, cpf: true },
+            });
+
+            if (!user) throw new NotFoundException('Paciente não encontrado');
+            if (!user.autoCadastro) throw new BadRequestException('Este paciente não está em auto-cadastro');
+
+            const updated = await this.prisma.user.update({
+                where: { idUser: id },
+                data: { 
+                    active: true,
+                    cpf: user.cpf.split('_AUTO_CADASTRO_')[0],
+                    autoCadastro: false,
+                },
+                select: patientSelect,
+            });
+            return updated;
+        } catch (e) {
+            if (e instanceof NotFoundException || e instanceof BadRequestException) {
+                throw e;
+            }
+            throw new BadRequestException('Não foi possível aceitar o cadastro do paciente');
         }
     }
 }
