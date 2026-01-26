@@ -1,0 +1,80 @@
+{
+  "info": {
+    "name": "Patients - Public Register",
+    "_postman_id": "patients-public-register",
+    "description": "Coleção para importar no Postman: cadastro público de pacientes (POST /patients/public)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Register patient (public)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{name}}\",\n  \"cpf\": \"{{cpf}}\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"birthDate\": \"{{birthDate}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/patients/public",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "patients",
+            "public"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const json = pm.response.json();",
+              "const id = json.idUser || json.id || json.user?.idUser || json.user?.id || json?.data?.id;",
+              "if (id) {",
+              "  pm.environment.set('patient_id', id);",
+              "  pm.test('patient id saved', () => pm.expect(id).to.exist);",
+              "} else {",
+              "  pm.test('response has id', () => pm.expect(json).to.have.property('idUser').or.have.property('id'));",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "name",
+      "value": "Paciente Teste"
+    },
+    {
+      "key": "cpf",
+      "value": "12345678901"
+    },
+    {
+      "key": "email",
+      "value": "paciente.test@local"
+    },
+    {
+      "key": "password",
+      "value": "senha123"
+    },
+    {
+      "key": "birthDate",
+      "value": "1990-01-01"
+    }
+  ]
+}

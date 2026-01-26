@@ -1,18 +1,19 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Form } from 'generated/prisma';
 import { PrismaService } from 'src/database/prisma.service';
 import { FormService } from 'src/forms/form.service';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
-
+import { FinalPromptConfig } from './triggers/interfaces/trigger.interface';
+import { TriggerDbService } from './triggers/trigger-db.service';
 @Injectable()
 export class ChatService {
   private openaiApiKey: string;
   private openaiBaseUrl = 'https://api.openai.com/v1/chat/completions';
-  private readonly FORM_MARKER = 'GERAR-FORM-159753';
-  private readonly FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
   constructor(
     private prisma: PrismaService,
+    private triggerDbService: TriggerDbService,
     private formService: FormService,
   ) {
     this.openaiApiKey = process.env.OPENAI_API_KEY || '';
@@ -20,136 +21,6 @@ export class ChatService {
       throw new Error('OPENAI_API_KEY não configurada');
     }
   }
-
-  private readonly SYSTEM_PROMPT = `Você é um especialista em criação de formulários médicos para sistemas públicos de saúde.
-
-Seu papel é conversar como uma pessoa real, com linguagem simples, clara e acolhedora.
-Evite tom robótico, frases engessadas ou linguagem de sistema.
-
-Se a finalidade do formulário já estiver clara, você pode criá-lo sem pedir mais detalhes.
-
-Siga obrigatoriamente a ordem abaixo, sem exceções:
-
-INTERPRETAÇÃO AUTOMÁTICA
-Título da sessão: Interpretação Automática da Intenção do Usuário
-
-Analise a mensagem do usuário e descreva, de forma natural e direta:
-
-Qual é o objetivo do formulário
-
-Em que contexto de saúde ele será usado
-
-Quem provavelmente vai responder
-
-Se faz sentido usar como formulário de triagem
-
-Se o uso de pontuação ajuda na avaliação
-
-Se algo não for informado, assuma valores coerentes com a realidade de sistemas públicos de saúde, explicando de forma simples.
-
-FORMULÁRIO EM TEXTO (PRÉ-VISUALIZAÇÃO)
-
-Apresente o formulário completo em texto, como se estivesse explicando para um usuário comum (não técnico).
-
-Inclua:
-
-Título claro e amigável
-
-Uma descrição curta explicando para que serve o formulário
-
-Perguntas objetivas e fáceis de entender
-
-Tipo de resposta descrito em linguagem comum (ex: "escolha uma opção")
-
-Opções de resposta com pontuação visível
-
-Explicação simples de como a pontuação será usada para avaliar o caso
-
-Não use termos técnicos com o usuário final.
-
-AUTORIZAÇÃO
-
-Pergunte exatamente:
-
-"Posso criar esse formulário agora no sistema?"
-
-Explique, em uma frase simples, que o formulário só será criado se houver uma confirmação clara.
-
-CRIAÇÃO
-
-Somente se o usuário confirmar explicitamente:
-
-Gere UM ÚNICO JSON
-
-Totalmente compatível com POST /forms
-
-Gere tudo automaticamente
-
-Não explique o JSON
-
-Não adicione texto antes ou depois
-
-Retorne apenas o JSON puro
-
-A primeira linha deve ser exatamente:
-GERAR-FORM-159753
-
-REGRAS RÍGIDAS
-
-Nunca gere JSON sem autorização
-
-Nunca crie campos fora da estrutura da API
-
-Nunca gere mais de um JSON
-
-Nunca use linguagem técnica com o usuário final
-
-Nunca reutilize exemplos fixos
-
-ESTRUTURA OBRIGATÓRIA DO JSON
-
-{
-"title": string,
-"description": string,
-"questions": [
-{
-"text": string,
-"type": "MULTIPLE_CHOICE" | "CHECKBOXES",
-"required": boolean,
-"options": [
-{
-"text": string,
-"value": number
-}
-]
-}
-],
-"scoreRules": [
-{
-"minScore": number,
-"maxScore": number,
-"classification": string,
-"conduct": string,
-"order": number
-}
-]
-}
-
-REGRAS DE GERAÇÃO
-
-Título e descrição devem refletir claramente o contexto do formulário
-
-Perguntas devem estar diretamente ligadas ao objetivo da triagem
-
-Tipos de pergunta devem ser escolhidos corretamente
-
-Todas as opções devem ter pontuação
-
-As regras de pontuação devem cobrir toda a faixa possível de pontos
-
-Os valores devem ser originais e coerentes
-
-Se qualquer regra acima não for cumprida, a resposta é inválida`;
 
   async createChat(userId: string, dto: CreateChatDto) {
     const chat = await this.prisma.chat.create({
@@ -232,15 +103,47 @@ Se qualquer regra acima não for cumprida, a resposta é inválida`;
       orderBy: { createdAt: 'asc' },
     });
 
-    // Fazer requisição para OpenAI
-    let openaiResponse = await this.callOpenAI(messages);
+    // Detectar trigger apropriada baseada na mensagem do usuário
+    const detection = await this.triggerDbService.detectTrigger(dto.content, messages);
+    const trigger = detection.trigger;
 
-    // Verificar se a resposta contém o marcador de criação de formulário
-    let createdForm = null;
-    if (openaiResponse.includes(this.FORM_MARKER)) {
-      const result = await this.processFormCreation(openaiResponse);
-      createdForm = result.form;
-      openaiResponse = result.responseText;
+    // Obter configuração do prompt da trigger detectada
+    const promptConfig = trigger
+      ? await this.triggerDbService.getPromptConfig(trigger.triggerId)
+      : await this.triggerDbService.getPromptConfig('default');
+
+    console.log(`[ChatService] Trigger ativada: ${trigger?.name || 'default'} (score: ${detection.score})`);
+
+    // Fazer requisição para OpenAI com o prompt da trigger
+    let openaiResponse = await this.callOpenAI(messages, {
+      systemPrompt: promptConfig?.systemPrompt || 'Você é um assistente útil.',
+      temperature: promptConfig?.temperature || 0.7,
+      maxTokens: promptConfig?.maxTokens || 2048,
+      triggers: trigger ? [trigger] : [],
+    });
+
+    // Processar resposta através da trigger se ela tiver markers
+    let createdForm: Form | null = null;
+    if (trigger && promptConfig?.markers && promptConfig.markers.length > 0) {
+      // Verificar se a resposta contém algum marker da trigger
+      for (const marker of promptConfig.markers) {
+        if (openaiResponse.includes(marker)) {
+          // Aqui você pode implementar processamento específico por trigger
+          // Por exemplo, para formulários, extrair e criar o formulário
+          if (marker === 'GERAR-FORM-159753') {
+            createdForm = await this.processFormCreation(openaiResponse, marker);
+            if (createdForm) {
+              openaiResponse = `✅ Formulário criado com sucesso!\n\n📋 **${createdForm.title}**\n\nO formulário foi salvo no sistema e já está disponível para uso.\n\n🔗 **Editar formulário:** ${process.env.CORS || 'http://localhost:3001'}/admin/criar-formulario/${createdForm.idForm}`;
+            }
+          }
+          if (marker === 'GERAR-PATIENTE-159753') {
+            // Processar criação de paciente (a implementar)
+            
+            openaiResponse = `✅ Funcionalidade de criação de paciente ainda não implementada.`;
+          }
+          break;
+        }
+      }
     }
 
     // Salvar resposta do assistente
@@ -268,59 +171,6 @@ Se qualquer regra acima não for cumprida, a resposta é inválida`;
     };
   }
 
-  private async processFormCreation(response: string): Promise<{ form: any; responseText: string }> {
-    try {
-      // Encontrar o JSON após o marcador
-      const markerIndex = response.indexOf(this.FORM_MARKER);
-      if (markerIndex === -1) {
-        return { form: null, responseText: response };
-      }
-
-      // Extrair o JSON da resposta
-      const afterMarker = response.substring(markerIndex + this.FORM_MARKER.length).trim();
-      
-      // Encontrar o JSON (pode começar com { ou ter texto antes)
-      const jsonStartIndex = afterMarker.indexOf('{');
-      if (jsonStartIndex === -1) {
-        return { form: null, responseText: response };
-      }
-
-      // Encontrar o fim do JSON (último })
-      let braceCount = 0;
-      let jsonEndIndex = -1;
-      for (let i = jsonStartIndex; i < afterMarker.length; i++) {
-        if (afterMarker[i] === '{') braceCount++;
-        if (afterMarker[i] === '}') braceCount--;
-        if (braceCount === 0) {
-          jsonEndIndex = i;
-          break;
-        }
-      }
-
-      if (jsonEndIndex === -1) {
-        return { form: null, responseText: response };
-      }
-
-      const jsonString = afterMarker.substring(jsonStartIndex, jsonEndIndex + 1);
-      const formData = JSON.parse(jsonString);
-
-      // Criar o formulário usando o FormService
-      const createdForm = await this.formService.create(formData);
-
-      // Gerar URL de edição do formulário
-      const editUrl = `${process.env.CORS}/admin/criar-formulario/${createdForm.idForm}`;
-
-      // Gerar nova mensagem de sucesso
-      const successMessage = `✅ Formulário criado com sucesso!\n\n📋 **${formData.title}**\n\nO formulário foi salvo no sistema e já está disponível para uso.\n\n🔗 **Editar formulário:** ${editUrl}`;
-
-      return { form: createdForm, responseText: successMessage };
-    } catch (error) {
-      console.error('Erro ao processar criação de formulário:', error);
-      const errorMessage = `⚠️ Houve um erro ao criar o formulário automaticamente. Por favor, tente novamente ou crie o formulário manualmente.\n\nErro: ${error.message || 'Erro desconhecido'}`;
-      return { form: null, responseText: errorMessage };
-    }
-  }
-
   async deleteChat(chatId: string, userId: string) {
     const chat = await this.getChat(chatId, userId);
 
@@ -342,7 +192,10 @@ Se qualquer regra acima não for cumprida, a resposta é inválida`;
     return { success: true };
   }
 
-  private async callOpenAI(messages: any[]): Promise<string> {
+  private async callOpenAI(
+    messages: any[],
+    promptConfig: FinalPromptConfig | any,
+  ): Promise<string> {
     const conversationMessages = messages.map((msg) => ({
       role: msg.role === 'USER' ? 'user' : 'assistant',
       content: msg.content,
@@ -356,16 +209,16 @@ Se qualquer regra acima não for cumprida, a resposta é inválida`;
           Authorization: `Bearer ${this.openaiApiKey}`,
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: promptConfig.model || 'gpt-3.5-turbo',
           messages: [
             {
               role: 'system',
-              content: this.SYSTEM_PROMPT,
+              content: promptConfig.systemPrompt,
             },
             ...conversationMessages,
           ],
-          temperature: 0.7,
-          max_tokens: 2048,
+          temperature: promptConfig.temperature || 0.7,
+          max_tokens: promptConfig.maxTokens || 2048,
         }),
       });
 
@@ -414,6 +267,60 @@ Se qualquer regra acima não for cumprida, a resposta é inválida`;
     } catch (error) {
       console.error('Erro ao gerar título:', error);
       return 'Nova Conversa';
+    }
+  }
+
+  private async processFormCreation(response: string, marker: string): Promise<Form | null> {
+    try {
+      console.log('[ChatService] Processando criação de formulário...');
+
+      // Encontrar o JSON após o marcador
+      const markerIndex = response.indexOf(marker);
+      if (markerIndex === -1) {
+        console.log('[ChatService] Marcador não encontrado');
+        return null;
+      }
+
+      const afterMarker = response.substring(markerIndex + marker.length).trim();
+
+      // Encontrar o JSON
+      const jsonStartIndex = afterMarker.indexOf('{');
+      if (jsonStartIndex === -1) {
+        console.log('[ChatService] JSON não encontrado');
+        return null;
+      }
+
+      // Encontrar o fim do JSON
+      let braceCount = 0;
+      let jsonEndIndex = -1;
+      for (let i = jsonStartIndex; i < afterMarker.length; i++) {
+        if (afterMarker[i] === '{') braceCount++;
+        if (afterMarker[i] === '}') braceCount--;
+        if (braceCount === 0) {
+          jsonEndIndex = i;
+          break;
+        }
+      }
+
+      if (jsonEndIndex === -1) {
+        console.log('[ChatService] JSON incompleto');
+        return null;
+      }
+
+      const jsonString = afterMarker.substring(jsonStartIndex, jsonEndIndex + 1);
+      console.log('[ChatService] JSON extraído:', jsonString.substring(0, 200) + '...');
+
+      const formData = JSON.parse(jsonString);
+      console.log('[ChatService] Criando formulário:', formData.title);
+
+      // Criar o formulário usando o FormService
+      const createdForm = await this.formService.create(formData);
+      console.log('[ChatService] Formulário criado com ID:', createdForm.idForm);
+
+      return createdForm;
+    } catch (error) {
+      console.error('Erro ao processar criação de formulário:', error);
+      return null;
     }
   }
 }

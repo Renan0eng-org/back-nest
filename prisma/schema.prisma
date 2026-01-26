@@ -470,3 +470,74 @@ model Message {
   @@index([chatId])
   @@index([createdAt])
 }
+
+// ========================================
+// AI Agents & Triggers System
+// ========================================
+
+model AiAgent {
+  id              String      @id @default(uuid())
+  name            String      @unique
+  description     String?
+  model           String      @default("gpt-4o-mini")  // Modelo de IA usado
+  temperature     Float       @default(0.7)
+  maxTokens       Int         @default(2048)
+  systemPrompt    String?     @db.Text  // Prompt base do agente
+  active          Boolean     @default(true)
+  isDefault       Boolean     @default(false)  // Se é o agente padrão
+  
+  triggers        AiTrigger[]
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([active])
+  @@index([isDefault])
+}
+
+model AiTrigger {
+  id              String      @id @default(uuid())
+  triggerId       String      @unique  // ID único legível (ex: "form-creation")
+  name            String
+  description     String?
+  
+  // Configurações de ativação
+  minScore        Int         @default(5)
+  priority        Int         @default(10)  // Menor = maior prioridade
+  active          Boolean     @default(true)
+  canStack        Boolean     @default(false)
+  
+  // Prompt específico da trigger
+  systemPrompt    String      @db.Text
+  temperature     Float?      // Se null, usa do agente
+  maxTokens       Int?        // Se null, usa do agente
+  
+  // Marcadores especiais (ex: ["GERAR-FORM-159753"])
+  markers         String[]    @default([])
+  
+  // Relação com agente
+  agentId         String
+  agent           AiAgent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  // Keywords
+  keywords        AiTriggerKeyword[]
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([agentId])
+  @@index([active])
+  @@index([priority])
+}
+
+model AiTriggerKeyword {
+  id          String      @id @default(uuid())
+  word        String
+  weight      Int         @default(5)
+  
+  triggerId   String
+  trigger     AiTrigger   @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+
+  @@index([triggerId])
+  @@unique([triggerId, word])
+}
