@@ -85,10 +85,8 @@ export class ChatService {
     userId: string,
     dto: CreateMessageDto,
   ) {
-    // Verificar se o chat existe e pertence ao usuário
     const chat = await this.getChat(chatId, userId);
 
-    // Salvar mensagem do usuário
     const userMessage = await this.prisma.message.create({
       data: {
         chatId,
@@ -97,24 +95,20 @@ export class ChatService {
       },
     });
 
-    // Obter histórico de mensagens para contexto
     const messages = await this.prisma.message.findMany({
       where: { chatId },
       orderBy: { createdAt: 'asc' },
     });
 
-    // Detectar trigger apropriada baseada na mensagem do usuário
     const detection = await this.triggerDbService.detectTrigger(dto.content, messages);
     const trigger = detection.trigger;
 
-    // Obter configuração do prompt da trigger detectada
     const promptConfig = trigger
       ? await this.triggerDbService.getPromptConfig(trigger.triggerId)
       : await this.triggerDbService.getPromptConfig('default');
 
     console.log(`[ChatService] Trigger ativada: ${trigger?.name || 'default'} (score: ${detection.score})`);
 
-    // Fazer requisição para OpenAI com o prompt da trigger
     let openaiResponse = await this.callOpenAI(messages, {
       systemPrompt: promptConfig?.systemPrompt || 'Você é um assistente útil.',
       temperature: promptConfig?.temperature || 0.7,
@@ -122,14 +116,10 @@ export class ChatService {
       triggers: trigger ? [trigger] : [],
     });
 
-    // Processar resposta através da trigger se ela tiver markers
     let createdForm: Form | null = null;
     if (trigger && promptConfig?.markers && promptConfig.markers.length > 0) {
-      // Verificar se a resposta contém algum marker da trigger
       for (const marker of promptConfig.markers) {
         if (openaiResponse.includes(marker)) {
-          // Aqui você pode implementar processamento específico por trigger
-          // Por exemplo, para formulários, extrair e criar o formulário
           if (marker === 'GERAR-FORM-159753') {
             createdForm = await this.processFormCreation(openaiResponse, marker);
             if (createdForm) {
@@ -137,7 +127,6 @@ export class ChatService {
             }
           }
           if (marker === 'GERAR-PATIENTE-159753') {
-            // Processar criação de paciente (a implementar)
             
             openaiResponse = `✅ Funcionalidade de criação de paciente ainda não implementada.`;
           }
@@ -274,7 +263,6 @@ export class ChatService {
     try {
       console.log('[ChatService] Processando criação de formulário...');
 
-      // Encontrar o JSON após o marcador
       const markerIndex = response.indexOf(marker);
       if (markerIndex === -1) {
         console.log('[ChatService] Marcador não encontrado');
@@ -283,14 +271,12 @@ export class ChatService {
 
       const afterMarker = response.substring(markerIndex + marker.length).trim();
 
-      // Encontrar o JSON
       const jsonStartIndex = afterMarker.indexOf('{');
       if (jsonStartIndex === -1) {
         console.log('[ChatService] JSON não encontrado');
         return null;
       }
 
-      // Encontrar o fim do JSON
       let braceCount = 0;
       let jsonEndIndex = -1;
       for (let i = jsonStartIndex; i < afterMarker.length; i++) {
@@ -313,7 +299,6 @@ export class ChatService {
       const formData = JSON.parse(jsonString);
       console.log('[ChatService] Criando formulário:', formData.title);
 
-      // Criar o formulário usando o FormService
       const createdForm = await this.formService.create(formData);
       console.log('[ChatService] Formulário criado com ID:', createdForm.idForm);
 
