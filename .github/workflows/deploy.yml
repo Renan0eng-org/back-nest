@@ -19,10 +19,6 @@ jobs:
           docker push devnardi/back-prefeitura:latest
 
       - run: |
-          sudo mkdir -p /opt/back-prefeitura
-          sudo chown 1001:1001 /opt/back-prefeitura
-
-      - run: |
           docker rm -f back-prefeitura || true
           docker pull devnardi/back-prefeitura:latest
           docker run -d \
