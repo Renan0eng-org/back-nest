@@ -10,25 +10,23 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Login no Docker Hub
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+      - run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
 
-      - name: Build e push da imagem
-        run: |
+      - run: |
           docker build -t devnardi/back-prefeitura:latest .
           docker push devnardi/back-prefeitura:latest
 
-      - name: Subindo novo container com variáveis
-        run: |
-            docker rm -f back-prefeitura || true
-            docker pull devnardi/back-prefeitura:latest
-            docker run -d \
-              --name back-prefeitura \
-              -p 4000:3000 \
-              --env-file /opt/back-prefeitura/.env \
-              devnardi/back-prefeitura:latest
-
-
+      - run: |
+          docker rm -f back-prefeitura || true
+          docker pull devnardi/back-prefeitura:latest
+          docker run -d \
+            --name back-prefeitura \
+            -p 4000:3000 \
+            --user 1001:1001 \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --env-file /opt/back-prefeitura/.env \
+            devnardi/back-prefeitura:latest
