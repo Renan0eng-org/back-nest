@@ -23,7 +23,7 @@ jobs:
           docker pull devnardi/back-prefeitura:latest
           docker run -d \
             --name back-prefeitura \
-            -p 4000:3000 \
+            -p 4000:4000 \
             --user 1001:1001 \
             --env-file /opt/back-prefeitura/.env \
             --tmpfs /tmp \
