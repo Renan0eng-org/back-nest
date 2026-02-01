@@ -115,7 +115,7 @@ export class PatientsService {
             }),
         ]);
 
-        return { total, page, pageSize, data:data.map((d) => ({ ...d, password: undefined, cpf: d.cpf.split('_ALTO_CADASTRO_')[0] })) };
+        return { total, page, pageSize, data: data.map((d) => ({ ...d, password: undefined, cpf: d.cpf.split('_ALTO_CADASTRO_')[0] })) };
     }
 
     async findOne(id: string) {
@@ -224,7 +224,8 @@ export class PatientsService {
                 select: patientSelect,
             });
             return created;
-        } catch (e) {
+        } catch (e: any) {
+            console.error('[PatientsService] Erro ao criar paciente:', e);
 
             if (e instanceof UnprocessableEntityException) {
                 throw e;
@@ -235,8 +236,20 @@ export class PatientsService {
                     const target = (e.meta && (e.meta.target as string[]).join(', ')) || 'campo único';
                     throw new BadRequestException(`Já existe um paciente com este(s) ${target}`);
                 }
+                // outros erros do Prisma
+                throw new BadRequestException({
+                    message: 'Erro ao criar paciente no banco de dados',
+                    code: e.code,
+                    meta: e.meta,
+                    originalMessage: e.message,
+                });
             }
-            throw new BadRequestException('Não foi possível criar paciente');
+            // Erros de validação ou outros
+            throw new BadRequestException({
+                message: 'Não foi possível criar paciente',
+                originalError: e?.message || String(e),
+                stack: e?.stack?.split('\n').slice(0, 5),
+            });
         }
     }
 
@@ -254,7 +267,7 @@ export class PatientsService {
             // pega o usuario para colocar o cpf com sufixo _delete_deteTedTimestamp
             const user = await this.prisma.user.findUnique({ where: { idUser: id }, select: { cpf: true } });
             if (!user) throw new NotFoundException('Paciente não encontrado');
-            const cpf = `${user.cpf}_delete_${Date.now()}` ;
+            const cpf = `${user.cpf}_delete_${Date.now()}`;
 
             await this.prisma.user.update({ where: { idUser: id }, data: { user_id_delete: idUser, dt_delete: new Date(), cpf: cpf } });
 
@@ -286,7 +299,7 @@ export class PatientsService {
 
             const updated = await this.prisma.user.update({
                 where: { idUser: id },
-                data: { 
+                data: {
                     active: true,
                     cpf: user.cpf.split('_AUTO_CADASTRO_')[0],
                     autoCadastro: false,

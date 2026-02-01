@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from 'src/auth/auth.module';
 import { DatabaseModule } from 'src/database/database.module';
 import { FormModule } from 'src/forms/form.module';
+import { TriggerAIService } from './trigger-ai.service';
 import { TriggerDbService } from './trigger-db.service';
 import { TriggerLogsBus } from './trigger-logs.bus';
 import { TriggerController } from './trigger.controller';
@@ -18,6 +19,7 @@ import { FormTrigger } from './triggers/form.trigger';
   ],
   controllers: [TriggerController],
   providers: [
+    TriggerAIService,
     TriggerDbService,
     TriggerService,
     FormTrigger,
@@ -27,4 +29,4 @@ import { FormTrigger } from './triggers/form.trigger';
   ],
   exports: [TriggerService, TriggerDbService, TriggerLogsBus],
 })
-export class TriggerModule {}
+export class TriggerModule { }

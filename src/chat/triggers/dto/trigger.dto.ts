@@ -177,3 +177,16 @@ export class UpdateAgentDto {
   @IsBoolean()
   isDefault?: boolean;
 }
+
+export class GenerateKeywordsDto {
+  @IsString()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  systemPrompt?: string;
+}
