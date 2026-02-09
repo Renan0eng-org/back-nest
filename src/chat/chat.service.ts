@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Form } from 'generated/prisma';
+import { Form, User } from 'generated/prisma';
 import { PrismaService } from 'src/database/prisma.service';
 import { FormService } from 'src/forms/form.service';
+import { PatientsService } from 'src/patients/patients.service';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { FinalPromptConfig } from './triggers/interfaces/trigger.interface';
@@ -15,6 +16,7 @@ export class ChatService {
     private prisma: PrismaService,
     private triggerDbService: TriggerDbService,
     private formService: FormService,
+    private patientsService: PatientsService,
   ) {
     this.openaiApiKey = process.env.OPENAI_API_KEY || '';
     if (!this.openaiApiKey) {
@@ -117,6 +119,7 @@ export class ChatService {
     });
 
     let createdForm: Form | null = null;
+    let createdPatient: User | null = null;
     if (trigger && promptConfig?.markers && promptConfig.markers.length > 0) {
       for (const marker of promptConfig.markers) {
         if (openaiResponse.includes(marker)) {
@@ -127,8 +130,10 @@ export class ChatService {
             }
           }
           if (marker === 'GERAR-PATIENTE-159753') {
-            
-            openaiResponse = `✅ Funcionalidade de criação de paciente ainda não implementada.`;
+            createdPatient = await this.processPatientCreation(openaiResponse, marker);
+            if (createdPatient) {
+              openaiResponse = `✅ Paciente criado com sucesso!\n\n📋 **${createdPatient.name}**\n\nO paciente foi salvo no sistema e já está disponível para uso.\n\n🔗 **Editar paciente:** ${process.env.CORS || 'http://localhost:3001'}/admin/editar-paciente/${createdPatient.idUser}`;
+            }
           }
           break;
         }
@@ -308,4 +313,59 @@ export class ChatService {
       return null;
     }
   }
+
+  private async processPatientCreation(response: string, marker: string): Promise<any | null> {
+    try {
+      console.log('[ChatService] Processando criação de paciente...');
+      const markerIndex = response.indexOf(marker);
+      if (markerIndex === -1) return null;
+
+      const afterMarker = response.substring(markerIndex + marker.length).trim();
+      const jsonStartIndex = afterMarker.indexOf('{');
+      if (jsonStartIndex === -1) return null;
+
+      let braceCount = 0;
+      let jsonEndIndex = -1;
+      for (let i = jsonStartIndex; i < afterMarker.length; i++) {
+        if (afterMarker[i] === '{') braceCount++;
+        if (afterMarker[i] === '}') braceCount--;
+        if (braceCount === 0) {
+          jsonEndIndex = i;
+          break;
+        }
+      }
+      if (jsonEndIndex === -1) return null;
+
+      const jsonString = afterMarker.substring(jsonStartIndex, jsonEndIndex + 1);
+      const patientData = JSON.parse(jsonString);
+
+      // Consertos importantes
+      if (!patientData.name || !patientData.email || !patientData.password) {
+        throw new BadRequestException('Campos obrigatórios faltando');
+      }
+      if (patientData.birthDate) patientData.birthDate = new Date(patientData.birthDate);
+
+      console.log('[ChatService] Criando paciente:', patientData);
+      const createdPatient = await this.patientsService.create({
+        name:   patientData.name,
+        email:  patientData.email,
+        cpf:  patientData.cpf,
+        birthDate: patientData.birthDate,
+        sexo:  patientData.sexo,
+        unidadeSaude:  patientData.unidadeSaude,
+        medicamentos:  patientData.medicamentos,
+        exames: patientData.exames,
+        examesDetalhes: patientData.examesDetalhes,
+        alergias: patientData.alergias,
+        password: patientData.password
+      });
+      console.log('[ChatService] Paciente criado com ID:', createdPatient.idUser);
+
+      return createdPatient;
+    } catch (error) {
+      console.error('Erro ao processar criação de paciente:', error);
+      return null;
+    }
+  }
+
 }

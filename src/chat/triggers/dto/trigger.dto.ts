@@ -11,9 +11,6 @@ export class KeywordDto {
 
 export class CreateTriggerDto {
   @IsString()
-  triggerId: string;
-
-  @IsString()
   name: string;
 
   @IsOptional()
@@ -41,11 +38,11 @@ export class CreateTriggerDto {
 
   @IsOptional()
   @IsNumber()
-  temperature?: number;
+  temperature?: number | null;
 
   @IsOptional()
   @IsNumber()
-  maxTokens?: number;
+  maxTokens?: number | null;
 
   @IsOptional()
   @IsArray()

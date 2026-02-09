@@ -497,7 +497,7 @@ model AiAgent {
 
 model AiTrigger {
   id              String      @id @default(uuid())
-  triggerId       String      @unique  // ID único legível (ex: "form-creation")
+  triggerId       String      @unique @default(uuid()) // ID único legível (ex: "form-creation")
   name            String
   description     String?
   

@@ -446,7 +446,6 @@ Seja conversacional e amigável.`,
 
     const trigger = await this.prisma.aiTrigger.create({
       data: {
-        triggerId: dto.triggerId,
         name: dto.name,
         description: dto.description,
         systemPrompt: dto.systemPrompt,
