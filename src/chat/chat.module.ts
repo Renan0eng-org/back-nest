@@ -8,8 +8,8 @@ import { ChatService } from './chat.service';
 import { TriggerModule } from './triggers/trigger.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, FormModule, PatientsModule, TriggerModule],
+  imports: [DatabaseModule, AuthModule, FormModule, TriggerModule, PatientsModule],
   controllers: [ChatController],
   providers: [ChatService],
 })
-export class ChatModule {}
+export class ChatModule { }

@@ -44,7 +44,7 @@ export class TriggerDbService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private triggerLogsBus: TriggerLogsBus
-  ) {}
+  ) { }
 
   async onModuleInit() {
     // Seed inicial das triggers padrão se não existirem
@@ -56,10 +56,10 @@ export class TriggerDbService implements OnModuleInit {
    */
   private async seedDefaultTriggersIfNeeded() {
     const agentCount = await this.prisma.aiAgent.count();
-    
+
     if (agentCount === 0) {
       this.triggerLogsBus.emit('[TriggerDbService] Banco vazio, criando agente e triggers padrão...');
-      
+
       // Criar agente padrão
       const defaultAgent = await this.prisma.aiAgent.create({
         data: {
@@ -179,6 +179,71 @@ REGRAS:
           { word: 'não sei usar', weight: 12 },
           { word: 'dúvida sobre', weight: 8 },
           { word: 'para que serve', weight: 8 },
+        ],
+      });
+
+      // Criar trigger de criação de pacientes
+      await this.createTriggerWithKeywords({
+        triggerId: 'patient-creation',
+        name: 'Criação de Paciente',
+        description: 'Trigger para criação de pacientes no sistema de saúde',
+        systemPrompt: `Você é um especialista em criação de pacientes para sistemas de saúde.
+
+Seu papel é conversar como uma pessoa real, com linguagem simples, clara e acolhedora.
+Evite tom robótico, frases engessadas ou linguagem de sistema.
+
+Se a finalidade do paciente já estiver clara, você pode gerar os dados sem pedir mais detalhes.
+
+Siga obrigatoriamente a ordem abaixo, sem exceções:
+
+PRÉ-VISUALIZAÇÃO DO PACIENTE EM TEXTO
+Apresente os dados do paciente em texto, incluindo:
+
+- Nome completo
+- Email válido
+- CPF válido
+- Data de nascimento
+- Sexo (masculino, feminino ou outro)
+- Unidade de saúde (nome fictício)
+- Lista de medicamentos (opcional)
+- Exames realizados (sim/não)
+- Detalhes dos exames (opcional)
+- Alergias (opcional)
+- Senha segura
+
+AUTORIZAÇÃO
+Pergunte: "Posso criar esse paciente agora no sistema?"
+
+CRIAÇÃO
+Somente se o usuário confirmar, gere UM ÚNICO JSON com a primeira linha sendo: GERAR-PATIENTE-159753
+
+ESTRUTURA DO JSON:
+
+{
+  "name": "string",
+  "email": "string",
+  "cpf": "string",
+  "birthDate": "YYYY-MM-DD",
+  "sexo": "string",
+  "unidadeSaude": "string",
+  "medicamentos": ["string", ...],
+  "exames": boolean,
+  "examesDetalhes": "string",
+  "alergias": ["string", ...],
+  "password": "string"
+}`,
+        minScore: 4,
+        priority: 10,
+        active: true,
+        canStack: false,
+        markers: ['GERAR-PATIENTE-159753'],
+        agentId: defaultAgent.id,
+        keywords: [
+          { word: 'criar paciente', weight: 15 },
+          { word: 'cadastrar paciente', weight: 15 },
+          { word: 'novo paciente', weight: 12 },
+          { word: 'adicionar paciente', weight: 12 },
+          { word: 'registrar paciente', weight: 12 },
         ],
       });
 
@@ -368,7 +433,7 @@ Seja conversacional e amigável.`,
 
   async deleteAgent(id: string) {
     const agent = await this.getAgent(id);
-    
+
     if (agent.isDefault) {
       throw new Error('Não é possível excluir o agente padrão');
     }
@@ -514,7 +579,7 @@ Seja conversacional e amigável.`,
 
   async toggleTrigger(id: string) {
     const trigger = await this.getTrigger(id);
-    
+
     const updated = await this.prisma.aiTrigger.update({
       where: { id },
       data: { active: !trigger.active },
@@ -526,7 +591,7 @@ Seja conversacional e amigável.`,
 
   async deleteTrigger(id: string) {
     const trigger = await this.getTrigger(id);
-    
+
     await this.prisma.aiTrigger.delete({ where: { id } });
     this.triggerLogsBus.emit(`[TriggerDbService] Trigger "${trigger.name}" excluída`);
     return { success: true };
@@ -541,7 +606,7 @@ Seja conversacional e amigável.`,
    */
   async detectTrigger(message: string, conversationHistory?: any[], agentId?: string) {
     const triggers = await this.getActiveTriggers(agentId);
-    
+
     if (triggers.length === 0) {
       this.triggerLogsBus.emit('[TriggerDbService] Nenhuma trigger ativa encontrada');
       return { trigger: null, score: 0 };
@@ -632,7 +697,7 @@ Seja conversacional e amigável.`,
    */
   async getStats(agentId?: string) {
     const where = agentId ? { agentId } : {};
-    
+
     const [total, active, inactive] = await Promise.all([
       this.prisma.aiTrigger.count({ where }),
       this.prisma.aiTrigger.count({ where: { ...where, active: true } }),

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Form, User } from 'generated/prisma';
 import { PrismaService } from 'src/database/prisma.service';
 import { FormService } from 'src/forms/form.service';
+import { SexDto } from 'src/patients/dto/register-patient.dto';
 import { PatientsService } from 'src/patients/patients.service';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -20,7 +21,7 @@ export class ChatService {
   ) {
     this.openaiApiKey = process.env.OPENAI_API_KEY || '';
     if (!this.openaiApiKey) {
-      throw new Error('OPENAI_API_KEY não configurada');
+      throw new Error('OPENAI_API_KEY não configurada ' + process.env.OPENAI_API_KEY);
     }
   }
 
@@ -130,9 +131,12 @@ export class ChatService {
             }
           }
           if (marker === 'GERAR-PATIENTE-159753') {
-            createdPatient = await this.processPatientCreation(openaiResponse, marker);
-            if (createdPatient) {
-              openaiResponse = `✅ Paciente criado com sucesso!\n\n📋 **${createdPatient.name}**\n\nO paciente foi salvo no sistema e já está disponível para uso.\n\n🔗 **Editar paciente:** ${process.env.CORS || 'http://localhost:3001'}/admin/editar-paciente/${createdPatient.idUser}`;
+            const patientResult = await this.processPatientCreation(openaiResponse, marker);
+            if (patientResult.success && patientResult.patient) {
+              createdPatient = patientResult.patient;
+              openaiResponse = `✅ Paciente criado com sucesso!\n\n👤 **${createdPatient.name}**\n\n📧 Email: ${createdPatient.email}\n📋 CPF: ${createdPatient.cpf || 'Não informado'}\n\nO paciente foi cadastrado no sistema e já está disponível.\n\n🔗 **Ver paciente:** ${process.env.CORS || 'http://localhost:3001'}/admin/editar-paciente/${createdPatient.idUser}`;
+            } else {
+              openaiResponse = `❌ Não foi possível criar o paciente.\n\n**Erro:** ${patientResult.error}\n\nPor favor, corrija os dados e tente novamente.`;
             }
           }
           break;
@@ -314,15 +318,23 @@ export class ChatService {
     }
   }
 
-  private async processPatientCreation(response: string, marker: string): Promise<any | null> {
+  private async processPatientCreation(response: string, marker: string): Promise<{ success: boolean; patient?: User; error?: string }> {
     try {
       console.log('[ChatService] Processando criação de paciente...');
+
       const markerIndex = response.indexOf(marker);
-      if (markerIndex === -1) return null;
+      if (markerIndex === -1) {
+        console.log('[ChatService] Marcador de paciente não encontrado');
+        return { success: false, error: 'Marcador de paciente não encontrado na resposta' };
+      }
 
       const afterMarker = response.substring(markerIndex + marker.length).trim();
+
       const jsonStartIndex = afterMarker.indexOf('{');
-      if (jsonStartIndex === -1) return null;
+      if (jsonStartIndex === -1) {
+        console.log('[ChatService] JSON de paciente não encontrado');
+        return { success: false, error: 'JSON com dados do paciente não encontrado na resposta' };
+      }
 
       let braceCount = 0;
       let jsonEndIndex = -1;
@@ -334,38 +346,97 @@ export class ChatService {
           break;
         }
       }
-      if (jsonEndIndex === -1) return null;
+
+      if (jsonEndIndex === -1) {
+        console.log('[ChatService] JSON de paciente incompleto');
+        return { success: false, error: 'JSON com dados do paciente está incompleto ou mal formatado' };
+      }
 
       const jsonString = afterMarker.substring(jsonStartIndex, jsonEndIndex + 1);
+      console.log('[ChatService] JSON de paciente extraído:', jsonString.substring(0, 200) + '...');
+
       const patientData = JSON.parse(jsonString);
+      console.log('[ChatService] Criando paciente:', patientData.name);
 
-      // Consertos importantes
-      if (!patientData.name || !patientData.email || !patientData.password) {
-        throw new BadRequestException('Campos obrigatórios faltando');
+      // Mapear sexo para o formato esperado pelo DTO
+      let sexo: SexDto | undefined;
+      if (patientData.sexo) {
+        const sexoNormalizado = patientData.sexo.toLowerCase();
+        if (sexoNormalizado.includes('masculino') || sexoNormalizado === 'male' || sexoNormalizado === 'm') {
+          sexo = SexDto.MASCULINO;
+        } else if (sexoNormalizado.includes('feminino') || sexoNormalizado === 'female' || sexoNormalizado === 'f') {
+          sexo = SexDto.FEMININO;
+        } else {
+          sexo = SexDto.OUTRO;
+        }
       }
-      if (patientData.birthDate) patientData.birthDate = new Date(patientData.birthDate);
 
-      console.log('[ChatService] Criando paciente:', patientData);
-      const createdPatient = await this.patientsService.create({
-        name:   patientData.name,
-        email:  patientData.email,
-        cpf:  patientData.cpf,
-        birthDate: patientData.birthDate,
-        sexo:  patientData.sexo,
-        unidadeSaude:  patientData.unidadeSaude,
-        medicamentos:  patientData.medicamentos,
-        exames: patientData.exames,
+      // Converter arrays para strings se necessário
+      const medicamentos = Array.isArray(patientData.medicamentos)
+        ? patientData.medicamentos.join(', ')
+        : patientData.medicamentos;
+
+      const alergias = Array.isArray(patientData.alergias)
+        ? patientData.alergias.join(', ')
+        : patientData.alergias;
+
+      // Converter birthDate para formato ISO-8601 DateTime completo
+      let birthDate: string | undefined;
+      if (patientData.birthDate) {
+        // Se já é um DateTime completo, usar como está
+        if (patientData.birthDate.includes('T')) {
+          birthDate = patientData.birthDate;
+        } else {
+          // Se é apenas data (YYYY-MM-DD), adicionar hora
+          birthDate = `${patientData.birthDate}T00:00:00.000Z`;
+        }
+      }
+
+      const registerData = {
+        name: patientData.name,
+        email: patientData.email,
+        password: patientData.password || 'Senha@123',
+        cpf: patientData.cpf,
+        birthDate,
+        sexo,
+        unidadeSaude: patientData.unidadeSaude,
+        medicamentos,
+        exames: patientData.exames === true || patientData.exames === 'true' || patientData.exames === 'sim',
         examesDetalhes: patientData.examesDetalhes,
-        alergias: patientData.alergias,
-        password: patientData.password
-      });
+        alergias,
+      };
+
+      console.log('[ChatService] Dados para criação do paciente:', JSON.stringify(registerData, null, 2));
+
+      const createdPatient = await this.patientsService.create(registerData);
       console.log('[ChatService] Paciente criado com ID:', createdPatient.idUser);
 
-      return createdPatient;
-    } catch (error) {
-      console.error('Erro ao processar criação de paciente:', error);
-      return null;
+      return { success: true, patient: createdPatient as unknown as User };
+    } catch (error: any) {
+      console.error('[ChatService] Erro ao processar criação de paciente:', error?.message || error);
+      console.error('[ChatService] Detalhes do erro:', JSON.stringify(error?.response || error, null, 2));
+
+      // Extrair mensagem de erro legível
+      let errorMessage = 'Erro desconhecido ao criar paciente';
+      if (error?.response?.message) {
+        errorMessage = typeof error.response.message === 'string'
+          ? error.response.message
+          : JSON.stringify(error.response.message);
+      } else if (error?.message) {
+        // Extrair a parte legível do erro do Prisma
+        if (error.message.includes('Invalid value for argument')) {
+          const match = error.message.match(/Invalid value for argument `(\w+)`: (.+)/);
+          if (match) {
+            errorMessage = `Campo '${match[1]}' inválido: ${match[2]}`;
+          } else {
+            errorMessage = error.message.split('\n').pop() || error.message;
+          }
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      return { success: false, error: errorMessage };
     }
   }
-
 }

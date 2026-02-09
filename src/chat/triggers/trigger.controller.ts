@@ -17,16 +17,19 @@ import {
 import { interval, map, merge, Observable } from 'rxjs';
 import { AppTokenGuard } from 'src/auth/app-token.guard';
 import { Menu } from 'src/auth/menu.decorator';
-import { CreateAgentDto, CreateTriggerDto, UpdateAgentDto, UpdateTriggerDto } from './dto/trigger.dto';
+import { CreateAgentDto, CreateTriggerDto, UpdateAgentDto, UpdateTriggerDto, GenerateKeywordsDto } from './dto/trigger.dto';
 import { TriggerDbService } from './trigger-db.service';
 import { TriggerLogsBus } from './trigger-logs.bus';
+import { TriggerAIService } from './trigger-ai.service';
+
 @Controller('triggers')
 @UseGuards(AppTokenGuard)
 @Menu('chat-ai-admin')
 export class TriggerController {
     constructor(
         private readonly triggerDbService: TriggerDbService,
-        private readonly logsBus: TriggerLogsBus
+        private readonly logsBus: TriggerLogsBus,
+        private readonly triggerAIService: TriggerAIService
     ) { }
 
     @Get('agents')
@@ -98,6 +101,15 @@ export class TriggerController {
     @Delete(':id')
     async deleteTrigger(@Param('id') id: string) {
         return this.triggerDbService.deleteTrigger(id);
+    }
+
+    @Post('generate-keywords')
+    @UsePipes(new ValidationPipe())
+    async generateKeywords(@Body() dto: GenerateKeywordsDto) {
+        this.logsBus.emit(`[TriggerController] Gerando keywords para: ${dto.name}`);
+        const keywords = await this.triggerAIService.generateKeywords(dto);
+        this.logsBus.emit(`[TriggerController] ${keywords.length} keywords geradas`);
+        return { keywords };
     }
 
     @Post('test')
