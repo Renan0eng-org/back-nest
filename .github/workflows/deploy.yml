@@ -1,4 +1,4 @@
-name: Deploy Backend Prefeitura
+name: Deploy Backend Prefeitura (PM2)
 
 on:
   push:
@@ -10,25 +10,22 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout do código
+        uses: actions/checkout@v4
 
-      - run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USER }}" --password-stdin
+      - name: Instalar dependências
+        run: npm ci
 
-      - run: |
-          docker build -t devnardi/back-prefeitura:latest .
-          docker push devnardi/back-prefeitura:latest
+      - name: Build
+        run: npm run build
 
-      - run: |
-          docker rm -f back-prefeitura || true
-          docker pull devnardi/back-prefeitura:latest
-          docker run -d \
-            --name back-prefeitura \
-            -p 4000:4000 \
-            --user 1001:1001 \
-            --env-file /opt/back-prefeitura/.env \
-            --tmpfs /tmp \
-            --tmpfs /var/tmp \
-            --cap-drop ALL \
-            --security-opt no-new-privileges \
-            devnardi/back-prefeitura:latest
-
+      - name: Deploy com PM2
+        run: |
+          pm2 stop back-prefeitura || true
+          pm2 delete back-prefeitura || true
+          pm2 start dist/main.js --name back-prefeitura
+          pm2 save
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PREFEITURA }}
+          PORT: 4000
