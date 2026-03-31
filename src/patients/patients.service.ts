@@ -25,6 +25,8 @@ const patientSelect = Prisma.validator<Prisma.UserSelect>()({
     examesDetalhes: true,
     alergias: true,
     autoCadastro: true,
+    alta: true,
+    altaAt: true,
     nivel_acesso: {
         select: {
             idNivelAcesso: true,
@@ -91,6 +93,9 @@ export class PatientsService {
         }
         if (typeof filters?.autoCadastro === 'boolean') {
             where.autoCadastro = filters.autoCadastro;
+        }
+        if (typeof filters?.alta === 'boolean') {
+            where.alta = filters.alta;
         }
 
         if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
@@ -313,5 +318,33 @@ export class PatientsService {
             }
             throw new BadRequestException('Não foi possível aceitar o cadastro do paciente');
         }
+    }
+
+    async darAlta(id: string) {
+        const user = await this.prisma.user.findFirst({
+            where: { idUser: id, dt_delete: null },
+        });
+        if (!user) throw new NotFoundException('Paciente não encontrado');
+        if (user.alta) throw new BadRequestException('Paciente já possui alta');
+
+        return this.prisma.user.update({
+            where: { idUser: id },
+            data: { alta: true, altaAt: new Date(), active: false },
+            select: patientSelect,
+        });
+    }
+
+    async reverterAlta(id: string) {
+        const user = await this.prisma.user.findFirst({
+            where: { idUser: id, dt_delete: null },
+        });
+        if (!user) throw new NotFoundException('Paciente não encontrado');
+        if (!user.alta) throw new BadRequestException('Paciente não possui alta');
+
+        return this.prisma.user.update({
+            where: { idUser: id },
+            data: { alta: false, altaAt: null, active: true },
+            select: patientSelect,
+        });
     }
 }

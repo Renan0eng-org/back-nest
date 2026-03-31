@@ -15,6 +15,12 @@ export class AuthController {
         return this.authService.createUser(data);
     }
 
+    @Post('register-web')
+    @Public()
+    async registerWeb(@Body() data: RegisterUserDto) {
+        return this.authService.createUser({ ...data, type: 'USUARIO' } as any);
+    }
+
     @Post('login')
     @Public()
     async login(@Body() data: LoginUserDto) {

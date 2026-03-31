@@ -250,10 +250,32 @@ export class FormController {
 
     @Get('/users/toAssign')
     @Menu('atribuir-usuarios')
-    getUsersToAssign(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
-        const p = page ? parseInt(page, 10) : undefined;
-        const ps = pageSize ? parseInt(pageSize, 10) : undefined;
-        return (this.formService as any).getUsersToAssign ? (this.formService as any).getUsersToAssign({ page: p, pageSize: ps }) : this.formService.getUsersToAssign();
+    getUsersToAssign(
+        @Query('name') name?: string,
+        @Query('email') email?: string,
+        @Query('sexo') sexo?: string,
+        @Query('unidadeSaude') unidadeSaude?: string,
+        @Query('medicamentos') medicamentos?: string,
+        @Query('exames') exames?: string,
+        @Query('alergias') alergias?: string,
+        @Query('birthDateFrom') birthDateFrom?: string,
+        @Query('birthDateTo') birthDateTo?: string,
+        @Query('ageMin') ageMin?: string,
+        @Query('ageMax') ageMax?: string,
+    ) {
+        return this.formService.getUsersToAssign({
+            name: name || undefined,
+            email: email || undefined,
+            sexo: sexo || undefined,
+            unidadeSaude: unidadeSaude || undefined,
+            medicamentos: medicamentos || undefined,
+            exames: exames === 'true' ? true : exames === 'false' ? false : undefined,
+            alergias: alergias || undefined,
+            birthDateFrom: birthDateFrom || undefined,
+            birthDateTo: birthDateTo || undefined,
+            ageMin: ageMin ? parseInt(ageMin, 10) : undefined,
+            ageMax: ageMax ? parseInt(ageMax, 10) : undefined,
+        });
     }
 
     @Get(':id/assigned')

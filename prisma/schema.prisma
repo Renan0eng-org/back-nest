@@ -50,6 +50,8 @@ model User {
   examesDetalhes String?
   alergias       String?
   autoCadastro   Boolean?    @default(false)
+  alta           Boolean     @default(false)
+  altaAt         DateTime?
 
   fromAssigned   Form[] @relation("FormAssignedUsers")
 

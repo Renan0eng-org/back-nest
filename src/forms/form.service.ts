@@ -63,6 +63,12 @@ export class FormService {
                         name: true,
                         email: true,
                         active: true,
+                        birthDate: true,
+                        sexo: true,
+                        unidadeSaude: true,
+                        medicamentos: true,
+                        exames: true,
+                        alergias: true,
                     },
                 },
             },
@@ -1244,13 +1250,73 @@ export class FormService {
         return user;
     }
 
-    async getUsersToAssign() {
+    async getUsersToAssign(filters?: {
+        name?: string
+        email?: string
+        sexo?: string
+        unidadeSaude?: string
+        medicamentos?: string
+        exames?: boolean
+        alergias?: string
+        birthDateFrom?: string
+        birthDateTo?: string
+        ageMin?: number
+        ageMax?: number
+    }) {
+        const where: any = { type: 'PACIENTE' };
+
+        if (filters?.name) {
+            where.name = { contains: filters.name, mode: 'insensitive' };
+        }
+        if (filters?.email) {
+            where.email = { contains: filters.email, mode: 'insensitive' };
+        }
+        if (filters?.sexo) {
+            where.sexo = filters.sexo;
+        }
+        if (filters?.unidadeSaude) {
+            where.unidadeSaude = { contains: filters.unidadeSaude, mode: 'insensitive' };
+        }
+        if (filters?.medicamentos) {
+            where.medicamentos = { contains: filters.medicamentos, mode: 'insensitive' };
+        }
+        if (typeof filters?.exames === 'boolean') {
+            where.exames = filters.exames;
+        }
+        if (filters?.alergias) {
+            where.alergias = { contains: filters.alergias, mode: 'insensitive' };
+        }
+        if (filters?.birthDateFrom || filters?.birthDateTo) {
+            where.birthDate = {};
+            if (filters.birthDateFrom) where.birthDate.gte = new Date(filters.birthDateFrom);
+            if (filters.birthDateTo) where.birthDate.lte = new Date(filters.birthDateTo);
+        }
+        if (typeof filters?.ageMin === 'number' || typeof filters?.ageMax === 'number') {
+            const now = new Date();
+            if (!where.birthDate) where.birthDate = {};
+            if (typeof filters.ageMin === 'number') {
+                const maxBirthDate = new Date(now.getFullYear() - filters.ageMin, now.getMonth(), now.getDate());
+                where.birthDate.lte = maxBirthDate;
+            }
+            if (typeof filters.ageMax === 'number') {
+                const minBirthDate = new Date(now.getFullYear() - filters.ageMax - 1, now.getMonth(), now.getDate() + 1);
+                where.birthDate.gte = minBirthDate;
+            }
+        }
+
         const allUsers = await this.prisma.user.findMany({
-            where: { type: 'PACIENTE' },
+            where,
             select: {
                 idUser: true,
                 name: true,
                 email: true,
+                active: true,
+                birthDate: true,
+                sexo: true,
+                unidadeSaude: true,
+                medicamentos: true,
+                exames: true,
+                alergias: true,
             },
         });
 

@@ -35,6 +35,7 @@ export class PatientsController {
         @Query('examesDetalhes') examesDetalhes?: string,
         @Query('alergias') alergias?: string,
         @Query('active') active?: string,
+        @Query('alta') alta?: string,
     ) {
         const p = page ? parseInt(page, 10) : undefined;
         const ps = pageSize ? parseInt(pageSize, 10) : undefined;
@@ -57,6 +58,10 @@ export class PatientsController {
         if (typeof active !== 'undefined') {
             if (active === 'true') filters.active = true;
             else if (active === 'false') filters.active = false;
+        }
+        if (typeof alta !== 'undefined') {
+            if (alta === 'true') filters.alta = true;
+            else if (alta === 'false') filters.alta = false;
         }
 
         return this.patientsService.findAll(p || ps ? { page: p, pageSize: ps, filters } : { filters } as any);
@@ -127,5 +132,15 @@ export class PatientsController {
     @Patch(':id/accept-registration')
     async acceptRegistration(@Param('id') id: string) {
         return this.patientsService.acceptRegistration(id);
+    }
+
+    @Patch(':id/alta')
+    async darAlta(@Param('id') id: string) {
+        return this.patientsService.darAlta(id);
+    }
+
+    @Patch(':id/reverter-alta')
+    async reverterAlta(@Param('id') id: string) {
+        return this.patientsService.reverterAlta(id);
     }
 }
