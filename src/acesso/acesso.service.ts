@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
+import { NotificationHelperService } from 'src/notifications/notification-helper.service';
 import { CreateMenuAcessoDto, CreateNivelAcessoDto, UpdateMenuAcessoDto, UpdateNivelAcessoDto } from './dto/acesso.dto';
 
 @Injectable()
 export class AcessoService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private notificationHelper: NotificationHelperService,
+    ) { }
 
     async findNiveisComMenus(opts?: { page?: number; pageSize?: number }) {
         const where = {};
@@ -181,7 +185,7 @@ export class AcessoService {
             throw new NotFoundException('Usuário não encontrado.');
         }
 
-        return this.prisma.user.update({
+        const updated = await this.prisma.user.update({
             where: { idUser },
             data: {
                 active: active,
@@ -191,5 +195,11 @@ export class AcessoService {
                 active: true,
             }
         });
+
+        if (active) {
+            this.notificationHelper.notifyUserActivated(idUser).catch(() => { });
+        }
+
+        return updated;
     }
 }

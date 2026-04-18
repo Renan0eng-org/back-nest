@@ -25,6 +25,35 @@ export class AuthService {
         return user;
     }
 
+    async createUserMobile(data: Prisma.UserCreateInput) {
+        const user = await this.createUser(data);
+        const { password: _, ...userWithoutPassword } = user;
+        const access_token = this.jwtService.sign({
+            sub: user.idUser,
+            email: user.email,
+            cpf: (user as any).cpf,
+            preApproval: true,
+        });
+        return { access_token, user: { ...userWithoutPassword, active: false } };
+    }
+
+    async findUserByIdBasic(id: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { idUser: id },
+            select: {
+                idUser: true,
+                name: true,
+                email: true,
+                cpf: true,
+                active: true,
+                type: true,
+                avatar: true,
+            },
+        });
+        if (!user) throw new UnauthorizedException('Usuário não encontrado');
+        return user;
+    }
+
     async findUserById(id: string) {
         const user = await this.prisma.user.findUnique({
             where: { idUser: id, active: true },
@@ -63,20 +92,21 @@ export class AuthService {
         return userWithoutPassword;
     }
 
-    async validateUser(cpf: string, password: string) {
+    async validateUser(cpf: string, password: string, allowInactive = false) {
         const user = await this.prisma.user.findUnique({
             where: {
                 cpf,
             }
         });
 
-        if (!user) throw new UnauthorizedException('Email ou senha inválidos');
+        if (!user) throw new UnauthorizedException('CPF ou senha inválidos');
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) throw new UnauthorizedException('Email ou senha inválidos');
+        if (!isPasswordValid) throw new UnauthorizedException('CPF ou senha inválidos');
 
-        const isActive = user.active;
-        if (!isActive) throw new UnauthorizedException('Usuário inativo');
+        if (!allowInactive && !user.active) {
+            throw new UnauthorizedException('Usuário inativo');
+        }
 
         const { password: _, ...userWithoutPassword } = user;
 

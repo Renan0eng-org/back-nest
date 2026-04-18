@@ -40,9 +40,9 @@ export class PushController {
       throw new Error('Token não fornecido.');
     }
 
-    // Validate token and fetch user with nivel_acesso + menus
+    // Validate token and fetch user (allows inactive users to subscribe for notifications)
     const validated = await this.authService.validateToken(token, { type: tokenType });
-    const user = await this.authService.findUserById(validated.dataToken.sub);
+    const user = await this.authService.findUserByIdBasic(validated.dataToken.sub);
     const userId = user.idUser;
     const id = await this.push.subscribe(userId, dto);
     return {

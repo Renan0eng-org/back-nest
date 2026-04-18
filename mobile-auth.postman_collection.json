@@ -1,0 +1,217 @@
+{
+	"info": {
+		"_postman_id": "mobile-auth-flow",
+		"name": "Mobile Auth Flow - Pré-Aprovação & Notificações",
+		"description": "Coleção com as rotas de autenticação mobile: registro, login (com pré-aprovação para inativos), push subscribe e rotas auxiliares.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Registro Mobile (retorna token pré-aprovação)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const res = pm.response.json();",
+							"if (res.access_token) {",
+							"    pm.collectionVariables.set('access_token', res.access_token);",
+							"    console.log('Token salvo:', res.access_token.substring(0, 30) + '...');",
+							"}",
+							"",
+							"pm.test('Status 201', () => pm.response.to.have.status(201));",
+							"pm.test('Retorna access_token', () => pm.expect(res.access_token).to.be.a('string'));",
+							"pm.test('Retorna user com active=false', () => pm.expect(res.user.active).to.eql(false));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Paciente Teste\",\n    \"email\": \"paciente@teste.com\",\n    \"cpf\": \"12345678901\",\n    \"password\": \"senha123\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/register",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "register"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2. Login Mobile (usuário inativo - pré-aprovação)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const res = pm.response.json();",
+							"if (res.access_token) {",
+							"    pm.collectionVariables.set('access_token', res.access_token);",
+							"    console.log('Token salvo:', res.access_token.substring(0, 30) + '...');",
+							"}",
+							"",
+							"pm.test('Status 201', () => pm.response.to.have.status(201));",
+							"pm.test('Retorna access_token', () => pm.expect(res.access_token).to.be.a('string'));",
+							"pm.test('Retorna user.active', () => pm.expect(res.user).to.have.property('active'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"cpf\": \"12345678901\",\n    \"password\": \"senha123\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/login",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "login"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3. Push Subscribe (funciona com token pré-aprovação)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"deviceToken\": \"fcm-device-token-aqui\",\n    \"userAgent\": \"MobileApp/1.0 Android\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/push/subscribe",
+					"host": ["{{baseUrl}}"],
+					"path": ["push", "subscribe"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4. Push Unsubscribe",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"deviceToken\": \"fcm-device-token-aqui\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/push/subscribe",
+					"host": ["{{baseUrl}}"],
+					"path": ["push", "subscribe"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "5. Login Mobile (usuário ativo - acesso completo)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const res = pm.response.json();",
+							"if (res.access_token) {",
+							"    pm.collectionVariables.set('access_token', res.access_token);",
+							"}",
+							"",
+							"pm.test('Status 201', () => pm.response.to.have.status(201));",
+							"pm.test('Retorna user.active = true', () => pm.expect(res.user.active).to.eql(true));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"cpf\": \"12345678901\",\n    \"password\": \"senha123\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/login",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "login"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "6. Refresh Token (somente web - cookie)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/auth/refresh",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "refresh"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "7. Me - Dados do usuário logado (somente web - cookie)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/auth/me",
+					"host": ["{{baseUrl}}"],
+					"path": ["auth", "me"]
+				}
+			},
+			"response": []
+		}
+	]
+}

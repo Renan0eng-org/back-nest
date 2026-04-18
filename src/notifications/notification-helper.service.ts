@@ -150,6 +150,20 @@ export class NotificationHelperService {
   }
 
   /**
+   * Notifica o usuário que sua conta foi ativada
+   * @param userId ID do usuário
+   */
+  async notifyUserActivated(userId: string): Promise<boolean> {
+    return this.sendToUser(userId, {
+      title: 'Conta Ativada',
+      body: 'Sua conta foi ativada! Você já tem acesso ao sistema.',
+      data: {
+        type: 'user_activated',
+      },
+    });
+  }
+
+  /**
    * Notifica sobre mensagem administrativa
    * @param userIds IDs dos usuários destinatários
    * @param message Mensagem

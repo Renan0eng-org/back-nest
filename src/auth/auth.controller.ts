@@ -12,7 +12,7 @@ export class AuthController {
     @Post('register')
     @Public()
     async register(@Body() data: RegisterUserDto) {
-        return this.authService.createUser(data);
+        return this.authService.createUserMobile(data);
     }
 
     @Post('register-web')
@@ -28,10 +28,15 @@ export class AuthController {
             throw new BadRequestException('CPF é obrigatório para login padrão');
         }
 
-        const user = await this.authService.validateUser(data.cpf, data.password);
-        const payload: any = { idUser: user.idUser, email: user.email, cpf: user.cpf };
-        const access_token = await this.authService.login(payload);
-        return { access_token, user };
+        const user = await this.authService.validateUser(data.cpf, data.password, true);
+        const payload: any = { sub: user.idUser, email: user.email, cpf: user.cpf };
+
+        if (!user.active) {
+            payload.preApproval = true;
+        }
+
+        const access_token = await this.authService.login({ idUser: user.idUser, email: user.email, cpf: user.cpf });
+        return { access_token, user: { ...user, active: user.active } };
     }
 
     @Post('login-web')
