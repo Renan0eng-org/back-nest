@@ -1,4 +1,4 @@
-name: Deploy Backend Prefeitura (PM2)
+name: Deploy Frontend Prefeitura (PM2)
 
 on:
   push:
@@ -10,30 +10,23 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Atualizar código via git
-        run: |
-          cd /home/github/back-nest
-
-          if [ ! -d ".git" ]; then
-            git clone https://github.com/Renan0eng-org/back-nest.git .
-          else
-            git pull origin main
-          fi
+      - name: Ir para pasta do projeto
+        run: cd ~/actions-runner/_work/web-prefeitura/web-prefeitura
 
       - name: Instalar dependências
         run: |
-          cd /home/github/back-nest
-          npm install
+          cd ~/actions-runner/_work/web-prefeitura/web-prefeitura
+          npm ci
 
       - name: Build
         run: |
-          cd /home/github/back-nest
+          cd ~/actions-runner/_work/web-prefeitura/web-prefeitura
           npm run build
 
-      - name: Deploy com PM2
+      - name: Start com PM2
         run: |
-          cd /home/github/back-nest
-          pm2 stop back-prefeitura || true
-          pm2 delete back-prefeitura || true
-          pm2 start npm --name back-prefeitura -- start
+          cd ~/actions-runner/_work/web-prefeitura/web-prefeitura
+          pm2 stop web-prefeitura || true
+          pm2 delete web-prefeitura || true
+          pm2 start npm --name web-prefeitura -- start
           pm2 save
