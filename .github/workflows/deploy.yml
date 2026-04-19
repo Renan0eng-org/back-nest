@@ -10,22 +10,30 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
+      - name: Atualizar código via git
+        run: |
+          cd /home/github/back-nest
+
+          if [ ! -d ".git" ]; then
+            git clone https://github.com/Renan0eng-org/back-nest.git .
+          else
+            git pull origin main
+          fi
 
       - name: Instalar dependências
-        run: npm ci
+        run: |
+          cd /home/github/back-nest
+          npm install
 
       - name: Build
-        run: npm run build
+        run: |
+          cd /home/github/back-nest
+          npm run build
 
       - name: Deploy com PM2
         run: |
+          cd /home/github/back-nest
           pm2 stop back-prefeitura || true
           pm2 delete back-prefeitura || true
-          pm2 start dist/main.js --name back-prefeitura
+          pm2 start npm --name back-prefeitura -- start
           pm2 save
-        env:
-          NODE_ENV: production
-          DATABASE_URL: ${{ secrets.DATABASE_URL_PREFEITURA }}
-          PORT: 4000
