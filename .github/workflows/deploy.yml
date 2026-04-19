@@ -23,7 +23,7 @@ jobs:
       - name: Instalar dependências
         run: |
           cd ~/actions-runner/_work/web-prefeitura/web-prefeitura
-          npm install
+          npm install --force
 
       - name: Build
         run: |
