@@ -292,6 +292,8 @@ REGRAS:
 - Inclua apenas os campos que devem ser alterados
 - Quando alta=true, o sistema define altaAt automaticamente para a data atual
 - Quando alta=false, o sistema limpa altaAt automaticamente
+- Um paciente NÃO PODE estar de alta e ativo ao mesmo tempo. Quando alta=true, SEMPRE envie active=false no JSON.
+- Se o usuário pedir para dar alta E ativar o paciente ao mesmo tempo, avise que não é possível: um paciente com alta não pode estar ativo.
 - Não esqueça ALTERAR-STATUS-PACIENTE-159753 ele é essencial`,
         minScore: 4,
         priority: 8,
@@ -417,7 +419,9 @@ REGRAS:
 - Sempre identifique o paciente antes de alterar
 - Inclua apenas os campos que devem ser alterados
 - Quando alta=true, o sistema define altaAt automaticamente para a data atual
-- Quando alta=false, o sistema limpa altaAt automaticamente`,
+- Quando alta=false, o sistema limpa altaAt automaticamente
+- Um paciente NÃO PODE estar de alta e ativo ao mesmo tempo. Quando alta=true, SEMPRE envie active=false no JSON.
+- Se o usuário pedir para dar alta E ativar o paciente ao mesmo tempo, avise que não é possível: um paciente com alta não pode estar ativo.`,
         minScore: 4,
         priority: 8,
         active: true,

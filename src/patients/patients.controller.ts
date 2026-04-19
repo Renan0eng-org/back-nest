@@ -106,6 +106,9 @@ export class PatientsController {
         if (dto.birthDate) updateData.birthDate = new Date(dto.birthDate);
         if (typeof dto.alta === 'boolean') {
             updateData.altaAt = dto.alta ? new Date() : null;
+            if (dto.alta) {
+                updateData.active = false;
+            }
         }
         return this.patientsService.update(id, updateData);
     }

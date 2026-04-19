@@ -507,6 +507,10 @@ export class ChatService {
       if (typeof statusData.alta === 'boolean') {
         updateData.alta = statusData.alta;
         updateData.altaAt = statusData.alta ? new Date() : null;
+        // Alta implica desativar o paciente
+        if (statusData.alta) {
+          updateData.active = false;
+        }
       }
 
       if (Object.keys(updateData).length === 0) {
