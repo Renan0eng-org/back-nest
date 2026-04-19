@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Atualizar código via git
         run: |
-          cd ~/actions-runner/_work/web-prefeitura/web-prefeitura
+          cd ~/actions-runner/_work/back-nest/back-nest
 
           if [ ! -d ".git" ]; then
             git clone https://github.com/Renan0eng-org/back-nest.git .
@@ -22,17 +22,17 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          cd ~/actions-runner/_work/web-prefeitura/web-prefeitura
+          cd ~/actions-runner/_work/back-nest/back-nest
           npm install --force
 
       - name: Build
         run: |
-          cd ~/actions-runner/_work/web-prefeitura/web-prefeitura
+          cd ~/actions-runner/_work/back-nest/back-nest
           npm run build
 
       - name: Deploy com PM2
         run: |
-          cd ~/actions-runner/_work/web-prefeitura/web-prefeitura
+          cd ~/actions-runner/_work/back-nest/back-nest
           pm2 stop back-prefeitura || true
           pm2 delete back-prefeitura || true
           pm2 start npm --name back-prefeitura -- start
