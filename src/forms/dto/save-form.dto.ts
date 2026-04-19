@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min, MinLength, ValidateNested } from 'class-validator';
-import { QuestionType } from 'generated/prisma';
+import { QuestionType } from '@prisma/client';
 
 class OptionDto {
   @IsOptional()

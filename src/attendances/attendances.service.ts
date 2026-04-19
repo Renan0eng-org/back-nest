@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AttendanceStatus, Prisma } from 'generated/prisma';
+import { AttendanceStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { CreateFromAppointmentDto } from './dto/create-from-appointment.dto';

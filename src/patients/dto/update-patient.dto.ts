@@ -54,4 +54,12 @@ export class UpdatePatientDto {
   @IsOptional()
   @IsString()
   avatar?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  alta?: boolean;
 }

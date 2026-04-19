@@ -25,6 +25,11 @@ jobs:
           cd ~/actions-runner/_work/back-nest/back-nest
           npm install --force
 
+      - name: Prisma generate
+        run: |
+          cd ~/actions-runner/_work/back-nest/back-nest
+          npx prisma generate
+
       - name: Build
         run: |
           cd ~/actions-runner/_work/back-nest/back-nest

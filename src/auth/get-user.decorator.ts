@@ -1,6 +1,6 @@
 // src/auth/get-user.decorator.ts
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { User } from 'generated/prisma';
+import { User } from '@prisma/client';
 
 /**
  * Cria um decorador de parâmetro personalizado chamado @GetUser.

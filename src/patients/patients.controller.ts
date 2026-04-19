@@ -104,6 +104,9 @@ export class PatientsController {
     update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
         const updateData: any = { ...dto };
         if (dto.birthDate) updateData.birthDate = new Date(dto.birthDate);
+        if (typeof dto.alta === 'boolean') {
+            updateData.altaAt = dto.alta ? new Date() : null;
+        }
         return this.patientsService.update(id, updateData);
     }
 

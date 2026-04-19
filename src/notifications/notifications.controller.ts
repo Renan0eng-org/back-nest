@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { User } from 'generated/prisma';
+import { User } from '@prisma/client';
 import { GetUser } from 'src/auth/get-user.decorator';
 import { Menu } from 'src/auth/menu.decorator';
 import { CreateNotificationDto } from './dto/create-notification.dto';

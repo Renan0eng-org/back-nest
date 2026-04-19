@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Form, User } from 'generated/prisma';
+import { Form, User } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
 import { FormService } from 'src/forms/form.service';
 import { SexDto } from 'src/patients/dto/register-patient.dto';
@@ -137,6 +137,15 @@ export class ChatService {
               openaiResponse = `✅ Paciente criado com sucesso!\n\n👤 **${createdPatient.name}**\n\n📧 Email: ${createdPatient.email}\n📋 CPF: ${createdPatient.cpf || 'Não informado'}\n\nO paciente foi cadastrado no sistema e já está disponível.\n\n🔗 **Ver paciente:** ${process.env.CORS || 'http://localhost:3001'}/admin/editar-paciente/${createdPatient.idUser}`;
             } else {
               openaiResponse = `❌ Não foi possível criar o paciente.\n\n**Erro:** ${patientResult.error}\n\nPor favor, corrija os dados e tente novamente.`;
+            }
+          }
+          if (marker === 'ALTERAR-STATUS-PACIENTE-159753') {
+            const statusResult = await this.processPatientStatusChange(openaiResponse, marker);
+            if (statusResult.success && statusResult.patient) {
+              const p = statusResult.patient;
+              openaiResponse = `✅ Status do paciente atualizado com sucesso!\n\n👤 **${p.name}**\n📋 CPF: ${p.cpf || 'Não informado'}\n📧 Email: ${p.email}\n\n📌 **Status atual:**\n- Ativo: ${p.active ? 'Sim' : 'Não'}\n- Alta: ${p.alta ? 'Sim' : 'Não'}${p.altaAt ? `\n- Data da alta: ${new Date(p.altaAt).toLocaleDateString('pt-BR')}` : ''}\n\n🔗 **Ver paciente:** ${process.env.CORS || 'http://localhost:3001'}/admin/editar-paciente/${p.idUser}`;
+            } else {
+              openaiResponse = `❌ Não foi possível alterar o status do paciente.\n\n**Erro:** ${statusResult.error}\n\nPor favor, verifique os dados e tente novamente.`;
             }
           }
           break;
@@ -437,6 +446,84 @@ export class ChatService {
       }
 
       return { success: false, error: errorMessage };
+    }
+  }
+
+  private async processPatientStatusChange(response: string, marker: string): Promise<{ success: boolean; patient?: User; error?: string }> {
+    try {
+      console.log('[ChatService] Processando alteração de status de paciente...');
+
+      const markerIndex = response.indexOf(marker);
+      if (markerIndex === -1) {
+        return { success: false, error: 'Marcador de alteração de status não encontrado na resposta' };
+      }
+
+      const afterMarker = response.substring(markerIndex + marker.length).trim();
+
+      const jsonStartIndex = afterMarker.indexOf('{');
+      if (jsonStartIndex === -1) {
+        return { success: false, error: 'JSON com dados de alteração não encontrado na resposta' };
+      }
+
+      let braceCount = 0;
+      let jsonEndIndex = -1;
+      for (let i = jsonStartIndex; i < afterMarker.length; i++) {
+        if (afterMarker[i] === '{') braceCount++;
+        if (afterMarker[i] === '}') braceCount--;
+        if (braceCount === 0) {
+          jsonEndIndex = i;
+          break;
+        }
+      }
+
+      if (jsonEndIndex === -1) {
+        return { success: false, error: 'JSON com dados de alteração está incompleto ou mal formatado' };
+      }
+
+      const jsonString = afterMarker.substring(jsonStartIndex, jsonEndIndex + 1);
+      console.log('[ChatService] JSON de status extraído:', jsonString);
+
+      const statusData = JSON.parse(jsonString);
+
+      // Encontrar o paciente por CPF ou email
+      let patient: User | null = null;
+      if (statusData.cpf) {
+        patient = await this.prisma.user.findUnique({ where: { cpf: statusData.cpf } });
+      } else if (statusData.email) {
+        patient = await this.prisma.user.findUnique({ where: { email: statusData.email } });
+      }
+
+      if (!patient) {
+        return { success: false, error: 'Paciente não encontrado no sistema com o CPF/email informado' };
+      }
+
+      // Montar dados de atualização
+      const updateData: any = {};
+
+      if (typeof statusData.active === 'boolean') {
+        updateData.active = statusData.active;
+      }
+
+      if (typeof statusData.alta === 'boolean') {
+        updateData.alta = statusData.alta;
+        updateData.altaAt = statusData.alta ? new Date() : null;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return { success: false, error: 'Nenhuma alteração especificada (active ou alta)' };
+      }
+
+      const updatedPatient = await this.prisma.user.update({
+        where: { idUser: patient.idUser },
+        data: updateData,
+      });
+
+      console.log('[ChatService] Status do paciente atualizado:', updatedPatient.idUser);
+
+      return { success: true, patient: updatedPatient };
+    } catch (error: any) {
+      console.error('[ChatService] Erro ao alterar status do paciente:', error?.message || error);
+      return { success: false, error: error?.message || 'Erro desconhecido ao alterar status do paciente' };
     }
   }
 }

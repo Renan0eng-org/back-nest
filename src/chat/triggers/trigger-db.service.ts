@@ -247,6 +247,72 @@ ESTRUTURA DO JSON:
         ],
       });
 
+      // Criar trigger de alteração de status de paciente
+      await this.createTriggerWithKeywords({
+        triggerId: 'patient-status-change',
+        name: 'Alteração de Status de Paciente',
+        description: 'Trigger para alterar o status de um paciente (ativar/desativar, dar alta)',
+        systemPrompt: `Você é um especialista em gestão de pacientes do sistema de saúde pública.
+
+Seu papel é conversar como uma pessoa real, com linguagem simples, clara e acolhedora.
+Evite tom robótico, frases engessadas ou linguagem de sistema.
+
+Você pode alterar o status de pacientes no sistema:
+- **active**: ativar ou desativar o cadastro do paciente (true/false)
+- **alta**: registrar alta médica do paciente (true/false). Quando alta=true, o sistema registra automaticamente a data da alta.
+
+Siga obrigatoriamente a ordem abaixo, sem exceções:
+
+IDENTIFICAÇÃO DO PACIENTE
+Pergunte o CPF ou email do paciente para identificá-lo no sistema.
+
+PRÉ-VISUALIZAÇÃO DA ALTERAÇÃO
+Apresente em texto:
+- Nome do paciente identificado
+- CPF / Email
+- Status atual (active, alta)
+- Alterações que serão feitas
+
+AUTORIZAÇÃO
+Pergunte: "Posso aplicar essas alterações agora no sistema?"
+
+ALTERAÇÃO
+Somente se o usuário confirmar, gere UM ÚNICO JSON com a primeira linha sendo: ALTERAR-STATUS-PACIENTE-159753
+
+ESTRUTURA DO JSON:
+ALTERAR-STATUS-PACIENTE-159753
+{
+  "cpf": "string (CPF do paciente)" OU "email": "string (email do paciente)",
+  "active": boolean (opcional),
+  "alta": boolean (opcional)
+}
+
+REGRAS:
+- Sempre identifique o paciente antes de alterar
+- Inclua apenas os campos que devem ser alterados
+- Quando alta=true, o sistema define altaAt automaticamente para a data atual
+- Quando alta=false, o sistema limpa altaAt automaticamente
+- Não esqueça ALTERAR-STATUS-PACIENTE-159753 ele é essencial`,
+        minScore: 4,
+        priority: 8,
+        active: true,
+        canStack: false,
+        markers: ['ALTERAR-STATUS-PACIENTE-159753'],
+        agentId: defaultAgent.id,
+        keywords: [
+          { word: 'status paciente', weight: 15 },
+          { word: 'ativar paciente', weight: 15 },
+          { word: 'desativar paciente', weight: 15 },
+          { word: 'dar alta', weight: 15 },
+          { word: 'alta paciente', weight: 15 },
+          { word: 'alta médica', weight: 12 },
+          { word: 'inativar paciente', weight: 12 },
+          { word: 'reativar paciente', weight: 12 },
+          { word: 'mudar status', weight: 10 },
+          { word: 'alterar status', weight: 10 },
+        ],
+      });
+
       // Criar trigger padrão (fallback)
       await this.createTriggerWithKeywords({
         triggerId: 'default',
@@ -278,6 +344,100 @@ Seja conversacional e amigável.`,
 
       this.triggerLogsBus.emit('[TriggerDbService] Agente e triggers padrão criados com sucesso!');
     }
+
+    // Criar triggers faltantes (idempotente)
+    await this.seedMissingTriggers();
+  }
+
+  /**
+   * Cria triggers que ainda não existem no banco (por triggerId)
+   */
+  private async seedMissingTriggers() {
+    const defaultAgent = await this.getDefaultAgent();
+    if (!defaultAgent) return;
+
+    const missingTriggers = this.getDefaultTriggerDefinitions(defaultAgent.id);
+
+    for (const triggerDef of missingTriggers) {
+      const exists = await this.prisma.aiTrigger.findUnique({
+        where: { triggerId: triggerDef.triggerId },
+      });
+
+      if (!exists) {
+        this.triggerLogsBus.emit(`[TriggerDbService] Criando trigger faltante: ${triggerDef.name}`);
+        await this.createTriggerWithKeywords(triggerDef);
+      }
+    }
+  }
+
+  /**
+   * Definições de todas as triggers padrão do sistema
+   */
+  private getDefaultTriggerDefinitions(agentId: string) {
+    return [
+      {
+        triggerId: 'patient-status-change',
+        name: 'Alteração de Status de Paciente',
+        description: 'Trigger para alterar o status de um paciente (ativar/desativar, dar alta)',
+        systemPrompt: `Você é um especialista em gestão de pacientes do sistema de saúde pública.
+
+Seu papel é conversar como uma pessoa real, com linguagem simples, clara e acolhedora.
+Evite tom robótico, frases engessadas ou linguagem de sistema.
+
+Você pode alterar o status de pacientes no sistema:
+- **active**: ativar ou desativar o cadastro do paciente (true/false)
+- **alta**: registrar alta médica do paciente (true/false). Quando alta=true, o sistema registra automaticamente a data da alta.
+
+Siga obrigatoriamente a ordem abaixo, sem exceções:
+
+IDENTIFICAÇÃO DO PACIENTE
+Pergunte o CPF ou email do paciente para identificá-lo no sistema.
+
+PRÉ-VISUALIZAÇÃO DA ALTERAÇÃO
+Apresente em texto:
+- Nome do paciente identificado
+- CPF / Email
+- Status atual (active, alta)
+- Alterações que serão feitas
+
+AUTORIZAÇÃO
+Pergunte: "Posso aplicar essas alterações agora no sistema?"
+
+ALTERAÇÃO
+Somente se o usuário confirmar, gere UM ÚNICO JSON com a primeira linha sendo: ALTERAR-STATUS-PACIENTE-159753
+
+ESTRUTURA DO JSON:
+{
+  "cpf": "string (CPF do paciente)" OU "email": "string (email do paciente)",
+  "active": boolean (opcional),
+  "alta": boolean (opcional)
+}
+
+REGRAS:
+- Sempre identifique o paciente antes de alterar
+- Inclua apenas os campos que devem ser alterados
+- Quando alta=true, o sistema define altaAt automaticamente para a data atual
+- Quando alta=false, o sistema limpa altaAt automaticamente`,
+        minScore: 4,
+        priority: 8,
+        active: true,
+        canStack: false,
+        markers: ['ALTERAR-STATUS-PACIENTE-159753'],
+        agentId,
+        keywords: [
+          { word: 'status paciente', weight: 15 },
+          { word: 'ativar paciente', weight: 15 },
+          { word: 'desativar paciente', weight: 15 },
+          { word: 'dar alta', weight: 15 },
+          { word: 'alta paciente', weight: 15 },
+          { word: 'alta médica', weight: 12 },
+          { word: 'inativar paciente', weight: 12 },
+          { word: 'reativar paciente', weight: 12 },
+          { word: 'mudar status', weight: 10 },
+          { word: 'alterar status', weight: 10 },
+        ],
+      },
+    ];
   }
 
   /**
@@ -627,18 +787,18 @@ Seja conversacional e amigável.`,
 
       // Calcular score baseado nas keywords
       for (const keyword of trigger.keywords) {
-        if (lowerMessage.includes(keyword.word.toLowerCase())) {
+        if (this.matchKeyword(lowerMessage, keyword.word.toLowerCase())) {
           score += keyword.weight;
         }
       }
 
-      // Verificar histórico
+      // Verificar histórico (últimas 6 mensagens)
       if (conversationHistory && conversationHistory.length > 0) {
-        const lastMessages = conversationHistory.slice(-4);
+        const lastMessages = conversationHistory.slice(-6);
         for (const msg of lastMessages) {
           const content = msg.content?.toLowerCase() || '';
           for (const keyword of trigger.keywords) {
-            if (content.includes(keyword.word.toLowerCase())) {
+            if (this.matchKeyword(content, keyword.word.toLowerCase())) {
               score += keyword.weight / 2;
             }
           }
@@ -658,6 +818,37 @@ Seja conversacional e amigável.`,
       }
     }
 
+    // Se não encontrou trigger e a mensagem parece confirmação,
+    // verificar histórico com peso total para manter contexto
+    if (!bestTrigger && this.isConfirmationMessage(lowerMessage) && conversationHistory) {
+      const userMessages = conversationHistory
+        .filter(m => m.role === 'USER')
+        .slice(-4);
+
+      for (const trigger of triggers) {
+        if (trigger.triggerId === 'default') continue;
+        let historyScore = 0;
+
+        for (const msg of userMessages) {
+          const content = msg.content?.toLowerCase() || '';
+          for (const keyword of trigger.keywords) {
+            if (this.matchKeyword(content, keyword.word.toLowerCase())) {
+              historyScore += keyword.weight;
+            }
+          }
+        }
+
+        if (historyScore >= trigger.minScore && historyScore > bestScore) {
+          bestScore = historyScore;
+          bestTrigger = trigger;
+        }
+      }
+
+      if (bestTrigger) {
+        this.triggerLogsBus.emit(`[TriggerDbService] Confirmação detectada, mantendo trigger: ${bestTrigger.name} (score: ${bestScore})`);
+      }
+    }
+
     // Se não encontrou, usar default
     if (!bestTrigger) {
       bestTrigger = triggers.find(t => t.triggerId === 'default') || null;
@@ -672,6 +863,29 @@ Seja conversacional e amigável.`,
       score: bestScore,
       stackedTriggers: stackedTriggers.length > 0 ? stackedTriggers : undefined,
     };
+  }
+
+  /**
+   * Verifica se todas as palavras da keyword aparecem no texto
+   * Para keywords compostas como "ativar paciente", match "ativar o paciente"
+   */
+  private matchKeyword(text: string, keyword: string): boolean {
+    if (!keyword.includes(' ')) return text.includes(keyword);
+    const words = keyword.split(' ');
+    return words.every(word => text.includes(word));
+  }
+
+  /**
+   * Verifica se a mensagem é uma confirmação curta
+   */
+  private isConfirmationMessage(message: string): boolean {
+    const confirmations = [
+      'sim', 'ok', 'pode', 'confirmo', 'confirmar', 'claro',
+      'com certeza', 'pode sim', 'sim pode', 'vai', 'manda',
+      'faz', 'faz isso', 'pode fazer', 'aplica', 'aplique',
+      'positivo', 'afirmativo', 'certo', 'beleza', 'bora',
+    ];
+    return message.length < 50 && confirmations.some(p => message.trim() === p || message.includes(p));
   }
 
   /**

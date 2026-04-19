@@ -1,5 +1,5 @@
 import { IsBoolean, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
-import { AttendanceStatus } from 'generated/prisma';
+import { AttendanceStatus } from '@prisma/client';
 
 export class UpdateAttendanceDto {
   @IsOptional()
