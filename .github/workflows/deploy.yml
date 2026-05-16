@@ -1,4 +1,4 @@
-name: Deploy Backend Prefeitura (PM2)
+name: Deploy Backend Prefeitura (Docker)
 
 on:
   push:
@@ -10,35 +10,29 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Atualizar código via git
-        run: |
-          cd ~/actions-runner/_work/back-nest/back-nest
+      - name: Checkout
+        uses: actions/checkout@v4
 
-          if [ ! -d ".git" ]; then
-            git clone https://github.com/Renan0eng-org/back-nest.git .
-          else
-            git pull origin main
-          fi
-
-      - name: Instalar dependências
+      - name: Optional Docker Hub login
+        if: ${{ secrets.DOCKERHUB_USERNAME && secrets.DOCKERHUB_TOKEN }}
         run: |
-          cd ~/actions-runner/_work/back-nest/back-nest
-          npm install --force
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: Prisma generate
-        run: |
-          cd ~/actions-runner/_work/back-nest/back-nest
-          npx prisma generate
+      - name: Pull Docker image
+        run: docker pull devnardi/back-prefeitura:latest
 
-      - name: Build
+      - name: Stop and remove existing container
         run: |
-          cd ~/actions-runner/_work/back-nest/back-nest
-          npm run build
+          docker rm -f back-prefeitura || true
 
-      - name: Deploy com PM2
+      - name: Run container
         run: |
-          cd ~/actions-runner/_work/back-nest/back-nest
-          pm2 stop back-prefeitura || true
-          pm2 delete back-prefeitura || true
-          pm2 start npm --name back-prefeitura -- start
-          pm2 save
+          docker run -d \
+            --name back-prefeitura \
+            --restart unless-stopped \
+            -p 4000:4000 \
+            devnardi/back-prefeitura:latest
+
+      - name: Prune unused images
+        if: always()
+        run: docker image prune -f
