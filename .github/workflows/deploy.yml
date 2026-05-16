@@ -34,7 +34,7 @@ jobs:
             --name back-prefeitura \
             --restart unless-stopped \
             -p 4000:4000 \
-            -e NODE_ENV=production \
+            --env-file /home/github/envs/back-prefeitura.env \
             -e CORS="https://prefeitura.renannardi.com,https://www.prefeitura.renannardi.com" \
             devnardi/back-prefeitura:latest
 
