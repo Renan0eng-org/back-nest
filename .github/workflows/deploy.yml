@@ -13,31 +13,50 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Optional Docker Hub login
+      # Login Docker Hub
+      - name: Docker Hub Login
         run: |
-          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          else
-            echo "Skipping Docker Hub login: secrets not set"
-          fi
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: Pull Docker image
-        run: docker pull devnardi/back-prefeitura:latest
+      # Build da imagem
+      - name: Build Docker image
+        run: |
+          docker build -t devnardi/back-prefeitura:latest .
 
+      # Push da imagem
+      - name: Push Docker image
+        run: |
+          docker push devnardi/back-prefeitura:latest
+
+      # Remove container antigo
       - name: Stop and remove existing container
         run: |
           docker rm -f back-prefeitura || true
 
+      # Remove imagem antiga local
+      - name: Remove old image
+        run: |
+          docker rmi devnardi/back-prefeitura:latest || true
+
+      # Pull imagem nova
+      - name: Pull latest image
+        run: |
+          docker pull devnardi/back-prefeitura:latest
+
+      # Run novo container
       - name: Run container
         run: |
           docker run -d \
             --name back-prefeitura \
             --restart unless-stopped \
-            -p 4000:4000 \
+            --network prefeitura-net \
+            -p 4000:3000 \
             --env-file /home/github/envs/back-prefeitura.env \
+            -e DATABASE_URL="postgresql://postgres:R3n%40n159753@postgres-prefeitura:5432/prefeitura" \
             -e CORS="https://prefeitura.renannardi.com,https://www.prefeitura.renannardi.com" \
             devnardi/back-prefeitura:latest
 
+      # Limpeza
       - name: Prune unused images
         if: always()
-        run: docker image prune -f
+        run: docker image prune -af
