@@ -14,9 +14,13 @@ jobs:
         uses: actions/checkout@v4
 
       # Login Docker Hub
-      - name: Docker Hub Login
+      - name: Optional Docker Hub login
         run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          else
+            echo "Skipping Docker Hub login: secrets not set"
+          fi
 
       # Build da imagem
       - name: Build Docker image
