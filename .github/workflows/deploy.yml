@@ -56,8 +56,6 @@ jobs:
             --network prefeitura-net \
             -p 4000:3000 \
             --env-file /home/github/envs/back-prefeitura.env \
-            -e DATABASE_URL="postgresql://postgres:R3n%40n159753@postgres-prefeitura:5432/prefeitura" \
-            -e CORS="https://prefeitura.renannardi.com,https://www.prefeitura.renannardi.com" \
             devnardi/back-prefeitura:latest
 
       # Limpeza
