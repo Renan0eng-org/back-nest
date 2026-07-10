@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
 import { NotificationHelperService } from 'src/notifications/notification-helper.service';
-import { CreateMenuAcessoDto, CreateNivelAcessoDto, UpdateMenuAcessoDto, UpdateNivelAcessoDto } from './dto/acesso.dto';
+import { CreateMenuAcessoDto, CreateNivelAcessoDto, PermissaoItemDto, UpdateMenuAcessoDto, UpdateNivelAcessoDto } from './dto/acesso.dto';
 
 @Injectable()
 export class AcessoService {
@@ -13,7 +13,10 @@ export class AcessoService {
     async findNiveisComMenus(opts?: { page?: number; pageSize?: number }) {
         const where = {};
         if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
-            return this.prisma.nivel_Acesso.findMany({ include: { menus: true }, orderBy: { nome: 'asc' } });
+            return this.prisma.nivel_Acesso.findMany({
+                include: { permissoes: { include: { menu_acesso: true }, orderBy: { menu_acesso: { nome: 'asc' } } } },
+                orderBy: { nome: 'asc' },
+            });
         }
 
         const page = opts.page && opts.page > 0 ? opts.page : 1;
@@ -21,7 +24,12 @@ export class AcessoService {
 
         const [total, data] = await Promise.all([
             this.prisma.nivel_Acesso.count({ where }),
-            this.prisma.nivel_Acesso.findMany({ include: { menus: true }, orderBy: { nome: 'asc' }, skip: (page - 1) * pageSize, take: pageSize }),
+            this.prisma.nivel_Acesso.findMany({
+                include: { permissoes: { include: { menu_acesso: true }, orderBy: { menu_acesso: { nome: 'asc' } } } },
+                orderBy: { nome: 'asc' },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+            }),
         ]);
 
         return { total, page, pageSize, data };
@@ -44,6 +52,46 @@ export class AcessoService {
         });
     }
 
+    async findNivelComPermissoes(nivelId: number) {
+        const nivel = await this.prisma.nivel_Acesso.findUnique({
+            where: { idNivelAcesso: nivelId },
+            include: {
+                permissoes: {
+                    include: { menu_acesso: true },
+                    orderBy: { menu_acesso: { nome: 'asc' } },
+                },
+            },
+        });
+        if (!nivel) throw new NotFoundException('Nível de acesso não encontrado.');
+        return nivel;
+    }
+
+    async updateNivelPermissoes(nivelId: number, permissoes: PermissaoItemDto[]) {
+        const nivel = await this.prisma.nivel_Acesso.findUnique({ where: { idNivelAcesso: nivelId } });
+        if (!nivel) throw new NotFoundException('Nível de acesso não encontrado.');
+
+        await this.prisma.nivel_Menu_Permissao.deleteMany({
+            where: { nivelAcessoId: nivelId },
+        });
+
+        if (permissoes.length > 0) {
+            await this.prisma.nivel_Menu_Permissao.createMany({
+                data: permissoes.map(p => ({
+                    nivelAcessoId: nivelId,
+                    menuAcessoId: p.menuAcessoId,
+                    visualizar: p.visualizar,
+                    criar: p.criar,
+                    editar: p.editar,
+                    excluir: p.excluir,
+                    relatorio: p.relatorio,
+                })),
+            });
+        }
+
+        return this.findNivelComPermissoes(nivelId);
+    }
+
+    // Keep for backward compatibility during transition
     updateNivelMenus(nivelId: number, menuIds: number[]) {
         return this.prisma.nivel_Acesso.update({
             where: { idNivelAcesso: nivelId },
@@ -93,34 +141,26 @@ export class AcessoService {
         const filters = opts?.filters;
         const where: any = { dt_delete: null };
 
-        // Filter by type
         if (filters?.type) {
             if (filters.type === 'NOT_PACIENTE') {
-                // Exclude PACIENTE and ADMIN types
                 where.type = { notIn: ['PACIENTE', 'ADMIN'] };
             } else if (filters.type === 'NOT_ADMIN') {
-                // Exclude only ADMIN type
                 where.type = { not: 'ADMIN' };
             } else {
-                // Specific type
                 where.type = filters.type;
             }
         } else {
-            // Default: exclude ADMIN
             where.type = { not: 'ADMIN' };
         }
 
-        // Filter by name (case-insensitive partial match)
         if (filters?.name) {
             where.name = { contains: filters.name, mode: 'insensitive' };
         }
 
-        // Filter by access level (nivelAcessoId)
         if (typeof filters?.accessLevel === 'number') {
             where.nivelAcessoId = filters.accessLevel;
         }
 
-        // Filter by active status
         if (typeof filters?.active === 'boolean') {
             where.active = filters.active;
         }
@@ -190,7 +230,7 @@ export class AcessoService {
             data: {
                 active: active,
             },
-            select: { 
+            select: {
                 idUser: true,
                 active: true,
             }

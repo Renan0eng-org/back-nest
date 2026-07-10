@@ -1,14 +1,17 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class AuthService {
     constructor(
         private prisma: PrismaService,
-        private jwtService: JwtService
+        private jwtService: JwtService,
+        private mailService: MailService,
     ) { }
 
     async cryptPassword(password: string): Promise<string> {
@@ -60,7 +63,7 @@ export class AuthService {
             include: {
                 nivel_acesso: {
                     include: {
-                        menus: true,
+                        permissoes: { include: { menu_acesso: true } },
                     }
                 }
             }
@@ -68,7 +71,30 @@ export class AuthService {
         if (!user) throw new UnauthorizedException('Usuário não encontrado');
 
         const { password: _, ...userWithoutPassword } = user;
-        return userWithoutPassword;
+        return this.transformUserPermissions(userWithoutPassword);
+    }
+
+    private transformUserPermissions(user: any) {
+        const menus = (user.nivel_acesso?.permissoes || []).map((p: any) => ({
+            idMenuAcesso: p.menu_acesso.idMenuAcesso,
+            nome: p.menu_acesso.nome,
+            slug: p.menu_acesso.slug,
+            visualizar: p.visualizar,
+            criar: p.criar,
+            editar: p.editar,
+            excluir: p.excluir,
+            relatorio: p.relatorio,
+        }));
+
+        return {
+            ...user,
+            nivel_acesso: {
+                idNivelAcesso: user.nivel_acesso.idNivelAcesso,
+                nome: user.nivel_acesso.nome,
+                descricao: user.nivel_acesso.descricao,
+                menus,
+            },
+        };
     }
 
     async validateUserWeb(email: string, password: string) {
@@ -264,5 +290,129 @@ export class AuthService {
 
         const { password, ...rest } = user as any;
         return rest;
+    }
+
+    async updateProfile(userId: string, data: { name?: string; email?: string; phone?: string; cep?: string; cpf?: string }) {
+        const user = await this.prisma.user.findUnique({ where: { idUser: userId } });
+        if (!user) throw new UnauthorizedException('Usuário não encontrado');
+
+        if (data.email && data.email !== user.email) {
+            const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+            if (existing) throw new BadRequestException('Este e-mail já está em uso.');
+        }
+
+        if (data.cpf && data.cpf !== user.cpf) {
+            const existing = await this.prisma.user.findUnique({ where: { cpf: data.cpf } });
+            if (existing) throw new BadRequestException('Este CPF já está em uso.');
+        }
+
+        const updateData: any = {};
+        if (data.name) updateData.name = data.name;
+        if (data.email) updateData.email = data.email;
+        if (typeof data.phone !== 'undefined') updateData.phone = data.phone;
+        if (typeof data.cep !== 'undefined') updateData.cep = data.cep;
+        if (typeof data.cpf !== 'undefined') updateData.cpf = data.cpf;
+
+        const updated = await this.prisma.user.update({
+            where: { idUser: userId },
+            data: updateData,
+            include: {
+                nivel_acesso: {
+                    include: {
+                        permissoes: { include: { menu_acesso: true } },
+                    },
+                },
+            },
+        });
+
+        const { password, ...rest } = updated as any;
+        return this.transformUserPermissions(rest);
+    }
+
+    async changePassword(userId: string, currentPassword: string, newPassword: string) {
+        const user = await this.prisma.user.findUnique({ where: { idUser: userId } });
+        if (!user) throw new UnauthorizedException('Usuário não encontrado');
+
+        const isValid = await bcrypt.compare(currentPassword, user.password);
+        if (!isValid) throw new BadRequestException('Senha atual incorreta.');
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        await this.prisma.user.update({
+            where: { idUser: userId },
+            data: { password: hashed },
+        });
+
+        return { message: 'Senha alterada com sucesso.' };
+    }
+
+    async forgotPassword(email: string) {
+        const user = await this.prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            return { message: 'Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha.' };
+        }
+
+        await this.prisma.passwordResetToken.updateMany({
+            where: { userId: user.idUser, usedAt: null },
+            data: { usedAt: new Date() },
+        });
+
+        const token = randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+        await this.prisma.passwordResetToken.create({
+            data: {
+                token,
+                userId: user.idUser,
+                expiresAt,
+            },
+        });
+
+        await this.mailService.sendPasswordReset(user.email, user.name, token);
+
+        return { message: 'Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha.' };
+    }
+
+    async sendWelcomeEmail(userId: string) {
+        const user = await this.prisma.user.findUnique({ where: { idUser: userId } });
+        if (!user) throw new BadRequestException('Usuário não encontrado.');
+
+        await this.prisma.passwordResetToken.updateMany({
+            where: { userId: user.idUser, usedAt: null },
+            data: { usedAt: new Date() },
+        });
+
+        const token = randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        await this.prisma.passwordResetToken.create({
+            data: { token, userId: user.idUser, expiresAt },
+        });
+
+        await this.mailService.sendWelcome(user.email, user.name, token);
+
+        return { message: 'E-mail de boas-vindas enviado com sucesso.' };
+    }
+
+    async resetPassword(token: string, newPassword: string) {
+        const resetToken = await this.prisma.passwordResetToken.findUnique({ where: { token } });
+
+        if (!resetToken) throw new BadRequestException('Token inválido.');
+        if (resetToken.usedAt) throw new BadRequestException('Este link já foi utilizado.');
+        if (resetToken.expiresAt < new Date()) throw new BadRequestException('Este link expirou. Solicite uma nova redefinição.');
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+
+        await this.prisma.$transaction([
+            this.prisma.user.update({
+                where: { idUser: resetToken.userId },
+                data: { password: hashed },
+            }),
+            this.prisma.passwordResetToken.update({
+                where: { id: resetToken.id },
+                data: { usedAt: new Date() },
+            }),
+        ]);
+
+        return { message: 'Senha redefinida com sucesso.' };
     }
 }

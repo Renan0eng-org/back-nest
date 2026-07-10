@@ -192,33 +192,32 @@ REGRAS:
 Seu papel é conversar como uma pessoa real, com linguagem simples, clara e acolhedora.
 Evite tom robótico, frases engessadas ou linguagem de sistema.
 
-Se a finalidade do paciente já estiver clara, você pode gerar os dados sem pedir mais detalhes.
+Você pode criar um ou vários pacientes de uma só vez.
+Se o usuário enviar uma lista, processe todos de uma vez.
 
 Siga obrigatoriamente a ordem abaixo, sem exceções:
 
-PRÉ-VISUALIZAÇÃO DO PACIENTE EM TEXTO
-Apresente os dados do paciente em texto, incluindo:
-
+PRÉ-VISUALIZAÇÃO
+Apresente os dados de cada paciente, incluindo:
 - Nome completo
 - Email válido
 - CPF válido
 - Data de nascimento
 - Sexo (masculino, feminino ou outro)
-- Unidade de saúde (nome fictício)
-- Lista de medicamentos (opcional)
-- Exames realizados (sim/não)
-- Detalhes dos exames (opcional)
+- Unidade de saúde
+- Medicamentos (opcional)
+- Exames (sim/não)
 - Alergias (opcional)
-- Senha segura
+- Senha
 
 AUTORIZAÇÃO
-Pergunte: "Posso criar esse paciente agora no sistema?"
+Pergunte: "Posso criar esse(s) paciente(s) agora no sistema?"
 
 CRIAÇÃO
-Somente se o usuário confirmar, gere UM ÚNICO JSON com a primeira linha sendo: GERAR-PATIENTE-159753
+Somente se o usuário confirmar, gere o JSON com a primeira linha sendo: GERAR-PATIENTE-159753
 
-ESTRUTURA DO JSON:
-
+Para UM paciente:
+GERAR-PATIENTE-159753
 {
   "name": "string",
   "email": "string",
@@ -226,12 +225,19 @@ ESTRUTURA DO JSON:
   "birthDate": "YYYY-MM-DD",
   "sexo": "string",
   "unidadeSaude": "string",
-  "medicamentos": ["string", ...],
+  "medicamentos": ["string"],
   "exames": boolean,
   "examesDetalhes": "string",
-  "alergias": ["string", ...],
+  "alergias": ["string"],
   "password": "string"
-}`,
+}
+
+Para VÁRIOS pacientes:
+GERAR-PATIENTE-159753
+[
+  { ... },
+  { ... }
+]`,
         minScore: 4,
         priority: 10,
         active: true,
@@ -315,6 +321,121 @@ REGRAS:
         ],
       });
 
+      // Criar trigger de criação de usuários do sistema
+      await this.createTriggerWithKeywords({
+        triggerId: 'user-creation',
+        name: 'Criação de Usuário do Sistema',
+        description: 'Trigger para criação de usuários (profissionais) no sistema',
+        systemPrompt: `Você é um especialista em gestão de usuários do sistema de saúde pública.
+
+Seu papel é conversar como uma pessoa real, com linguagem simples, clara e acolhedora.
+Evite tom robótico, frases engessadas ou linguagem de sistema.
+
+IMPORTANTE: Você cria USUÁRIOS DO SISTEMA (profissionais, médicos, funcionários), NÃO pacientes.
+Não peça dados de paciente como data de nascimento, sexo, unidade de saúde, medicamentos ou alergias.
+
+Você pode criar um ou vários usuários do sistema de uma só vez.
+Se o usuário enviar uma lista de nomes/emails, processe todos de uma vez.
+
+NÍVEIS DE ACESSO:
+Antes de criar, você DEVE informar ao usuário os níveis disponíveis. Use os nomes exatamente como estão cadastrados no sistema.
+Se o usuário NÃO especificar nível de acesso, use "Não Autorizado" como padrão.
+Se o usuário pedir um nível que não existe, avise e use "Não Autorizado".
+
+TIPOS DE USUÁRIO VÁLIDOS:
+- USUARIO (padrão para profissionais do sistema)
+- MEDICO (profissionais médicos)
+
+DADOS NECESSÁRIOS PARA CADA USUÁRIO:
+- Nome completo (obrigatório)
+- Email (obrigatório)
+- CPF (opcional)
+- Telefone (opcional)
+- Nível de acesso (opcional, padrão: "Não Autorizado")
+- Tipo: USUARIO ou MEDICO (opcional, padrão: USUARIO)
+- Senha (opcional, padrão: "Senha@123")
+
+Siga obrigatoriamente a ordem abaixo:
+
+PRÉ-VISUALIZAÇÃO
+Apresente os dados de cada usuário em uma lista clara.
+
+AUTORIZAÇÃO
+Pergunte: "Posso criar esse(s) usuário(s) agora no sistema?"
+
+CRIAÇÃO
+Somente se o usuário confirmar, gere o JSON com a primeira linha sendo: GERAR-USUARIO-159753
+
+Para UM usuário:
+GERAR-USUARIO-159753
+{
+  "name": "string",
+  "email": "string",
+  "cpf": "string",
+  "phone": "string",
+  "password": "string",
+  "nivelAcesso": "Nome Exato do Nível",
+  "type": "USUARIO" | "MEDICO",
+  "active": true
+}
+
+Para VÁRIOS usuários:
+GERAR-USUARIO-159753
+[
+  { "name": "...", "email": "...", "cpf": "...", "nivelAcesso": "...", "type": "USUARIO", "password": "...", "active": true },
+  { "name": "...", "email": "...", "cpf": "...", "nivelAcesso": "...", "type": "MEDICO", "password": "...", "active": true }
+]
+
+REGRAS:
+- Sempre gere o marcador GERAR-USUARIO-159753 antes do JSON
+- Se o usuário não informar nível de acesso, use "Não Autorizado"
+- Se não informar senha, use "Senha@123"
+- Se não informar tipo, use "USUARIO"
+- CPF pode ficar vazio se não fornecido
+- active deve ser true por padrão
+- Para lista de usuários, use JSON array [ ]
+- NUNCA use tipo PACIENTE ou ADMIN aqui
+- NÃO peça dados de paciente (nascimento, sexo, etc)`,
+        minScore: 4,
+        priority: 5,
+        active: true,
+        canStack: false,
+        markers: ['GERAR-USUARIO-159753'],
+        agentId: defaultAgent.id,
+        keywords: [
+          { word: 'usuário', weight: 8 },
+          { word: 'usuario', weight: 8 },
+          { word: 'usuários', weight: 8 },
+          { word: 'usuarios', weight: 8 },
+          { word: 'criar usuário', weight: 15 },
+          { word: 'criar usuario', weight: 15 },
+          { word: 'crie usuário', weight: 15 },
+          { word: 'crie usuario', weight: 15 },
+          { word: 'crie usuarios', weight: 15 },
+          { word: 'crie usuários', weight: 15 },
+          { word: 'cadastrar usuário', weight: 15 },
+          { word: 'cadastrar usuario', weight: 15 },
+          { word: 'cadastre usuario', weight: 15 },
+          { word: 'cadastre usuário', weight: 15 },
+          { word: 'novo usuário', weight: 12 },
+          { word: 'novo usuario', weight: 12 },
+          { word: 'novos usuários', weight: 12 },
+          { word: 'novos usuarios', weight: 12 },
+          { word: 'adicionar usuário', weight: 12 },
+          { word: 'adicionar usuario', weight: 12 },
+          { word: 'criar conta', weight: 10 },
+          { word: 'criar contas', weight: 10 },
+          { word: 'crie conta', weight: 10 },
+          { word: 'crie contas', weight: 10 },
+          { word: 'criar médico', weight: 12 },
+          { word: 'criar medico', weight: 12 },
+          { word: 'crie médico', weight: 12 },
+          { word: 'crie medico', weight: 12 },
+          { word: 'cadastrar médico', weight: 12 },
+          { word: 'cadastrar medico', weight: 12 },
+        ],
+      });
+
       // Criar trigger padrão (fallback)
       await this.createTriggerWithKeywords({
         triggerId: 'default',
@@ -329,7 +450,8 @@ Seu papel é:
 
 FUNCIONALIDADES DISPONÍVEIS:
 - **Formulários**: Criação de formulários de triagem médica
-- **Pacientes**: Cadastro e gerenciamento
+- **Pacientes**: Cadastro e gerenciamento de pacientes
+- **Usuários**: Criação de contas de usuários/profissionais do sistema
 - **Agendamentos**: Marcação de consultas
 - **Notificações**: Envio de alertas
 - **Dashboard**: Visão geral do sistema
@@ -377,6 +499,54 @@ Seja conversacional e amigável.`,
    */
   private getDefaultTriggerDefinitions(agentId: string) {
     return [
+      {
+        triggerId: 'user-creation',
+        name: 'Criação de Usuário do Sistema',
+        description: 'Trigger para criação de usuários (profissionais) no sistema',
+        systemPrompt: `Você é um especialista em gestão de usuários do sistema de saúde pública.
+
+IMPORTANTE: Você cria USUÁRIOS DO SISTEMA (profissionais, médicos, funcionários), NÃO pacientes.
+Não peça dados de paciente como data de nascimento, sexo, unidade de saúde, medicamentos ou alergias.
+
+Você pode criar um ou vários usuários de uma só vez.
+
+NÍVEIS DE ACESSO:
+Se o usuário NÃO especificar nível de acesso, use "Não Autorizado" como padrão.
+
+TIPOS: USUARIO (padrão) ou MEDICO.
+
+DADOS: Nome, Email, CPF (opcional), Telefone (opcional), Nível de acesso (opcional), Tipo (opcional), Senha (opcional, padrão: "Senha@123").
+
+PRÉ-VISUALIZAÇÃO → AUTORIZAÇÃO → CRIAÇÃO com GERAR-USUARIO-159753 + JSON (objeto ou array).`,
+        minScore: 4,
+        priority: 5,
+        active: true,
+        canStack: false,
+        markers: ['GERAR-USUARIO-159753'],
+        agentId,
+        keywords: [
+          { word: 'usuário', weight: 8 },
+          { word: 'usuario', weight: 8 },
+          { word: 'usuários', weight: 8 },
+          { word: 'usuarios', weight: 8 },
+          { word: 'criar usuário', weight: 15 },
+          { word: 'criar usuario', weight: 15 },
+          { word: 'crie usuario', weight: 15 },
+          { word: 'crie usuário', weight: 15 },
+          { word: 'crie usuarios', weight: 15 },
+          { word: 'crie usuários', weight: 15 },
+          { word: 'cadastrar usuario', weight: 15 },
+          { word: 'cadastrar usuário', weight: 15 },
+          { word: 'cadastre usuario', weight: 15 },
+          { word: 'cadastre usuário', weight: 15 },
+          { word: 'criar conta', weight: 10 },
+          { word: 'crie conta', weight: 10 },
+          { word: 'criar médico', weight: 12 },
+          { word: 'criar medico', weight: 12 },
+          { word: 'crie médico', weight: 12 },
+          { word: 'crie medico', weight: 12 },
+        ],
+      },
       {
         triggerId: 'patient-status-change',
         name: 'Alteração de Status de Paciente',
@@ -874,9 +1044,13 @@ REGRAS:
    * Para keywords compostas como "ativar paciente", match "ativar o paciente"
    */
   private matchKeyword(text: string, keyword: string): boolean {
-    if (!keyword.includes(' ')) return text.includes(keyword);
-    const words = keyword.split(' ');
-    return words.every(word => text.includes(word));
+    const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const normText = normalize(text);
+    const normKeyword = normalize(keyword);
+
+    if (!normKeyword.includes(' ')) return normText.includes(normKeyword);
+    const words = normKeyword.split(' ');
+    return words.every(word => normText.includes(word));
   }
 
   /**

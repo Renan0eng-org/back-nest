@@ -13,5 +13,6 @@ import { AcessoService } from './acesso.service';
   ],
   controllers: [AcessoController],
   providers: [AcessoService],
+  exports: [AcessoService],
 })
 export class AcessoModule {}

@@ -5,6 +5,7 @@ import {
     Get,
     Param,
     Post,
+    Query,
     Req,
     UnauthorizedException,
     UseGuards,
@@ -27,6 +28,37 @@ export class ChatController {
     private readonly chatService: ChatService,
     private readonly authService: AuthService,
   ) {}
+
+  // ============================================
+  // ANALYTICS (must come before :chatId routes)
+  // ============================================
+
+  @Get('analytics')
+  async getAnalytics(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('triggerName') triggerName?: string,
+    @Query('type') type?: string,
+    @Query('userId') userId?: string,
+  ) {
+    return this.chatService.getChatAnalytics({
+      startDate,
+      endDate,
+      triggerName,
+      type,
+      userId,
+    });
+  }
+
+  @Get('analytics/types')
+  async getLogTypes() {
+    return this.chatService.getChatLogTypes();
+  }
+
+  @Get('analytics/triggers')
+  async getDistinctTriggers() {
+    return this.chatService.getDistinctTriggerNames();
+  }
 
   private async getUserIdFromRequest(req: Request): Promise<string> {
     const authHeader = req.headers.authorization;

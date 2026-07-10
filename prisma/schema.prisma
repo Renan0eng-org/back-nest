@@ -73,6 +73,9 @@ model User {
   
   // Chat relations
   chats         Chat[]
+  chatLogs      ChatLog[]
+
+  passwordResetTokens PasswordResetToken[]
 
   @@index([idUser])
   @@index([user_id_create])
@@ -81,25 +84,45 @@ model User {
 }
 
 model Nivel_Acesso {
-  idNivelAcesso Int           @id @default(autoincrement())
+  idNivelAcesso Int                    @id @default(autoincrement())
   nome          String
   descricao     String?
   users         User[]
   menus         Menu_Acesso[]
+  permissoes    Nivel_Menu_Permissao[]
 
   @@index([idNivelAcesso])
 }
 
 model Menu_Acesso {
-  idMenuAcesso Int            @id @default(autoincrement())
+  idMenuAcesso Int                    @id @default(autoincrement())
   nome         String
-  slug         String
+  slug         String                 @unique
   nivel_acesso Nivel_Acesso[]
-  visualizar   Boolean        @default(false)
-  criar        Boolean        @default(false)
-  editar       Boolean        @default(false)
-  excluir      Boolean        @default(false)
-  relatorio    Boolean        @default(false)
+  visualizar   Boolean                @default(false)
+  criar        Boolean                @default(false)
+  editar       Boolean                @default(false)
+  excluir      Boolean                @default(false)
+  relatorio    Boolean                @default(false)
+  permissoes   Nivel_Menu_Permissao[]
+}
+
+model Nivel_Menu_Permissao {
+  id            Int          @id @default(autoincrement())
+  nivelAcessoId Int
+  menuAcessoId  Int
+  visualizar    Boolean      @default(false)
+  criar         Boolean      @default(false)
+  editar        Boolean      @default(false)
+  excluir       Boolean      @default(false)
+  relatorio     Boolean      @default(false)
+
+  nivel_acesso  Nivel_Acesso @relation(fields: [nivelAcessoId], references: [idNivelAcesso], onDelete: Cascade)
+  menu_acesso   Menu_Acesso  @relation(fields: [menuAcessoId], references: [idMenuAcesso], onDelete: Cascade)
+
+  @@unique([nivelAcessoId, menuAcessoId])
+  @@index([nivelAcessoId])
+  @@index([menuAcessoId])
 }
 
 enum QuestionType {
@@ -452,6 +475,7 @@ model Chat {
   user        User        @relation(fields: [userId], references: [idUser], onDelete: Cascade)
   title       String      @default("Nova Conversa")
   messages    Message[]
+  chatLogs    ChatLog[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   active      Boolean     @default(true)
@@ -475,6 +499,19 @@ model Message {
 // ========================================
 // AI Agents & Triggers System
 // ========================================
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [idUser], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
 
 model AiAgent {
   id              String      @id @default(uuid())
@@ -535,10 +572,49 @@ model AiTriggerKeyword {
   id          String      @id @default(uuid())
   word        String
   weight      Int         @default(5)
-  
+
   triggerId   String
   trigger     AiTrigger   @relation(fields: [triggerId], references: [id], onDelete: Cascade)
 
   @@index([triggerId])
   @@unique([triggerId, word])
+}
+
+// ========================================
+// Chat Analytics / Logs
+// ========================================
+
+enum ChatLogType {
+  TRIGGER_DETECTED
+  MARKER_PROCESSED
+  ACTION_SUCCESS
+  ACTION_ERROR
+  MESSAGE_SENT
+  MESSAGE_RECEIVED
+}
+
+model ChatLog {
+  id            String      @id @default(uuid())
+  chatId        String
+  chat          Chat        @relation(fields: [chatId], references: [idChat], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [idUser])
+  type          ChatLogType
+  triggerName   String?
+  triggerId     String?
+  score         Float?
+  marker        String?
+  actionResult  String?     @db.Text
+  errorMessage  String?     @db.Text
+  userMessage   String?     @db.Text
+  aiResponse    String?     @db.Text
+  metadata      Json?
+  duration      Int?
+  createdAt     DateTime    @default(now())
+
+  @@index([chatId])
+  @@index([userId])
+  @@index([type])
+  @@index([triggerName])
+  @@index([createdAt])
 }

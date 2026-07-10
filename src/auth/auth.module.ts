@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { DatabaseModule } from '../database/database.module';
+import { MailModule } from '../mail/mail.module';
 import { AppTokenGuard } from './app-token.guard';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -13,9 +14,10 @@ import { RefreshTokenGuard } from './refresh-token.guard';
   imports: [
     DatabaseModule,
     PassportModule,
+    MailModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'SECRET_KEY',
-      signOptions: { expiresIn: '8h' }, 
+      signOptions: { expiresIn: '8h' },
     }),
   ],
   providers: [

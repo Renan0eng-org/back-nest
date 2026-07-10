@@ -104,6 +104,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       // ignore
     }
 
+    // log to terminal
+    const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
+    this.logger.error(`[${req.method}] ${req.originalUrl || req.url} → ${status} | ${messageStr}`);
+    if (userId) this.logger.error(`  User: ${userId} (${userEmail || 'unknown'})`);
+    if (stack && status >= 500) this.logger.error(stack);
+
     // write to DB (best-effort)
     try {
       // capture network/client details

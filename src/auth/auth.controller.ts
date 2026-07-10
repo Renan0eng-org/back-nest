@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Patch, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Public } from 'src/auth/public.decorator';
 import { AuthService } from './auth.service';
@@ -133,5 +133,55 @@ export class AuthController {
     @Post('validate')
     async validate(@Body('token') token: string) {
         return this.authService.validateToken(token);
+    }
+
+    @Patch('profile')
+    async updateProfile(
+        @Req() request: Request,
+        @Body() data: { name?: string; email?: string; phone?: string; cep?: string; cpf?: string },
+    ) {
+        const token = request.cookies['refresh_token'];
+        if (!token) throw new UnauthorizedException('Token não fornecido');
+
+        const dataToken = await this.authService.validateToken(token, { type: 'refresh' });
+        return this.authService.updateProfile(dataToken.dataToken.sub, data);
+    }
+
+    @Post('change-password')
+    async changePassword(
+        @Req() request: Request,
+        @Body() data: { currentPassword: string; newPassword: string },
+    ) {
+        const token = request.cookies['refresh_token'];
+        if (!token) throw new UnauthorizedException('Token não fornecido');
+
+        if (!data.currentPassword || !data.newPassword) {
+            throw new BadRequestException('Senha atual e nova senha são obrigatórias.');
+        }
+        if (data.newPassword.length < 6) {
+            throw new BadRequestException('A nova senha deve ter no mínimo 6 caracteres.');
+        }
+
+        const dataToken = await this.authService.validateToken(token, { type: 'refresh' });
+        return this.authService.changePassword(dataToken.dataToken.sub, data.currentPassword, data.newPassword);
+    }
+
+    @Post('forgot-password')
+    @Public()
+    async forgotPassword(@Body('email') email: string) {
+        if (!email) throw new BadRequestException('E-mail é obrigatório.');
+        return this.authService.forgotPassword(email);
+    }
+
+    @Post('reset-password')
+    @Public()
+    async resetPassword(@Body() data: { token: string; password: string }) {
+        if (!data.token || !data.password) {
+            throw new BadRequestException('Token e nova senha são obrigatórios.');
+        }
+        if (data.password.length < 6) {
+            throw new BadRequestException('A senha deve ter no mínimo 6 caracteres.');
+        }
+        return this.authService.resetPassword(data.token, data.password);
     }
 }

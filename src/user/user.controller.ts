@@ -1,14 +1,18 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { AuthService } from 'src/auth/auth.service';
 import { Menu } from 'src/auth/menu.decorator';
 import { RefreshTokenGuard } from 'src/auth/refresh-token.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserService } from './user.service';
 
-@Controller('admin/users') // Define uma rota base diferente de /admin/acesso
+@Controller('admin/users')
 @Menu('gerenciar-usuarios')
 export class UserController {
-    constructor(private readonly userService: UserService) { }
+    constructor(
+        private readonly userService: UserService,
+        private readonly authService: AuthService,
+    ) { }
 
     @Post()
     @UseGuards(RefreshTokenGuard)
@@ -60,8 +64,14 @@ export class UserController {
 
     @Delete(':id')
     @UseGuards(RefreshTokenGuard)
-    @HttpCode(HttpStatus.NO_CONTENT) // Retorna 204 No Content em caso de sucesso
+    @HttpCode(HttpStatus.NO_CONTENT)
     remove(@Param('id') id: string) {
         return this.userService.remove(id);
+    }
+
+    @Post(':id/welcome')
+    @UseGuards(RefreshTokenGuard)
+    sendWelcome(@Param('id') id: string) {
+        return this.authService.sendWelcomeEmail(id);
     }
 }

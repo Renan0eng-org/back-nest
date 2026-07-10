@@ -1,0 +1,1069 @@
+{
+  "info": {
+    "name": "Prefeitura API (back-nest)",
+    "_postman_id": "b1f0a7c2-0000-4a00-9000-prefeitura000",
+    "description": "Collection completa da API da Prefeitura (NestJS 11). Sem prefixo global, porta 4000.\n\nVariáveis:\n- baseUrl: URL base da API (ex.: http://localhost:4000 ou https://prefeitura.back.renannardi.com)\n- accessToken: JWT retornado no login (usado no header Authorization: Bearer)\n\nAutenticação:\n- A maioria das rotas usa cookie httpOnly `refresh_token` (setado no /auth/login-web) E/OU Bearer accessToken.\n- Habilite \"Send cookies\" no Postman e use a mesma sessão para que o cookie refresh_token seja reutilizado.\n- O request 'Auth > login-web' tem um script que salva automaticamente o accessToken na variável de coleção.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [ { "key": "token", "value": "{{accessToken}}", "type": "string" } ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "register (mobile)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"novo@exemplo.com\",\n  \"password\": \"123456\",\n  \"name\": \"Novo Usuario\",\n  \"cpf\": \"12345678901\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth","register"] }
+          }
+        },
+        {
+          "name": "register-web",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"novo@exemplo.com\",\n  \"password\": \"123456\",\n  \"name\": \"Novo Usuario\",\n  \"cpf\": \"12345678901\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/register-web", "host": ["{{baseUrl}}"], "path": ["auth","register-web"] }
+          }
+        },
+        {
+          "name": "login (CPF / mobile)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"cpf\": \"12345678901\",\n  \"password\": \"123456\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth","login"] }
+          }
+        },
+        {
+          "name": "login-web (email)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.accessToken) {",
+                  "    pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "    console.log('accessToken salvo na coleção.');",
+                  "  }",
+                  "} catch (e) { console.log('Sem accessToken no corpo da resposta.'); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"renan.nardi.dev@gmail.com\",\n  \"password\": \"123456\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login-web", "host": ["{{baseUrl}}"], "path": ["auth","login-web"] }
+          }
+        },
+        {
+          "name": "logout-web",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/auth/logout-web", "host": ["{{baseUrl}}"], "path": ["auth","logout-web"] }
+          }
+        },
+        {
+          "name": "refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  if (json && json.accessToken) {",
+                  "    pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  }",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth","refresh"] }
+          }
+        },
+        {
+          "name": "me",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth","me"] }
+          }
+        },
+        {
+          "name": "validate",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"{{accessToken}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/validate", "host": ["{{baseUrl}}"], "path": ["auth","validate"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuários (admin)",
+      "item": [
+        {
+          "name": "create user",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Usuario Teste\",\n  \"email\": \"usuario@exemplo.com\",\n  \"password\": \"123456\",\n  \"cpf\": \"12345678901\",\n  \"nivelAcessoId\": 1,\n  \"type\": \"USUARIO\",\n  \"active\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/admin/users", "host": ["{{baseUrl}}"], "path": ["admin","users"] }
+          }
+        },
+        {
+          "name": "list users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"], "path": ["admin","users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "name", "value": "", "disabled": true },
+                { "key": "accessLevel", "value": "", "disabled": true },
+                { "key": "type", "value": "", "disabled": true },
+                { "key": "active", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "get user by id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/admin/users/:id", "host": ["{{baseUrl}}"], "path": ["admin","users",":id"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "update user",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nome Atualizado\"\n}" },
+            "url": { "raw": "{{baseUrl}}/admin/users/:id", "host": ["{{baseUrl}}"], "path": ["admin","users",":id"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "delete user",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/admin/users/:id", "host": ["{{baseUrl}}"], "path": ["admin","users",":id"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Controle de Acesso",
+      "item": [
+        {
+          "name": "list niveis",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/admin/acesso/niveis?page=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["admin","acesso","niveis"], "query": [ { "key": "page", "value": "1" }, { "key": "pageSize", "value": "10" } ] } }
+        },
+        {
+          "name": "create nivel",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nome\": \"Administrador\",\n  \"descricao\": \"Acesso total\"\n}" },
+            "url": { "raw": "{{baseUrl}}/admin/acesso/niveis", "host": ["{{baseUrl}}"], "path": ["admin","acesso","niveis"] }
+          }
+        },
+        {
+          "name": "update nivel",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nome\": \"Administrador\",\n  \"descricao\": \"Atualizado\"\n}" },
+            "url": { "raw": "{{baseUrl}}/admin/acesso/niveis/:id", "host": ["{{baseUrl}}"], "path": ["admin","acesso","niveis",":id"], "variable": [ { "key": "id", "value": "1" } ] }
+          }
+        },
+        {
+          "name": "delete nivel",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/admin/acesso/niveis/:id", "host": ["{{baseUrl}}"], "path": ["admin","acesso","niveis",":id"], "variable": [ { "key": "id", "value": "1" } ] } }
+        },
+        {
+          "name": "update nivel menus",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"menuIds\": [1, 2, 3]\n}" },
+            "url": { "raw": "{{baseUrl}}/admin/acesso/niveis/:id/menus", "host": ["{{baseUrl}}"], "path": ["admin","acesso","niveis",":id","menus"], "variable": [ { "key": "id", "value": "1" } ] }
+          }
+        },
+        {
+          "name": "list menus",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/admin/acesso/menus?page=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["admin","acesso","menus"], "query": [ { "key": "page", "value": "1" }, { "key": "pageSize", "value": "10" } ] } }
+        },
+        {
+          "name": "create menu",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nome\": \"Pacientes\",\n  \"slug\": \"paciente\",\n  \"visualizar\": true,\n  \"criar\": true,\n  \"editar\": true,\n  \"excluir\": false,\n  \"relatorio\": false\n}" },
+            "url": { "raw": "{{baseUrl}}/admin/acesso/menus", "host": ["{{baseUrl}}"], "path": ["admin","acesso","menus"] }
+          }
+        },
+        {
+          "name": "update menu",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nome\": \"Pacientes\",\n  \"slug\": \"paciente\",\n  \"editar\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/admin/acesso/menus/:id", "host": ["{{baseUrl}}"], "path": ["admin","acesso","menus",":id"], "variable": [ { "key": "id", "value": "1" } ] }
+          }
+        },
+        {
+          "name": "delete menu",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/admin/acesso/menus/:id", "host": ["{{baseUrl}}"], "path": ["admin","acesso","menus",":id"], "variable": [ { "key": "id", "value": "1" } ] } }
+        },
+        {
+          "name": "list users (acesso)",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/admin/acesso/users?page=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["admin","acesso","users"], "query": [ { "key": "page", "value": "1" }, { "key": "pageSize", "value": "10" }, { "key": "type", "value": "", "disabled": true }, { "key": "name", "value": "", "disabled": true }, { "key": "accessLevel", "value": "", "disabled": true }, { "key": "active", "value": "", "disabled": true } ] } }
+        },
+        {
+          "name": "update user nivel",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"nivelAcessoId\": 1\n}" },
+            "url": { "raw": "{{baseUrl}}/admin/acesso/users/:id/nivel", "host": ["{{baseUrl}}"], "path": ["admin","acesso","users",":id","nivel"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "update user status",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"active\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/admin/acesso/users/:id/status", "host": ["{{baseUrl}}"], "path": ["admin","acesso","users",":id","status"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pacientes",
+      "item": [
+        {
+          "name": "list patients",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/patients?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"], "path": ["patients"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "name", "value": "", "disabled": true },
+                { "key": "email", "value": "", "disabled": true },
+                { "key": "cpf", "value": "", "disabled": true },
+                { "key": "birthDateFrom", "value": "", "disabled": true },
+                { "key": "birthDateTo", "value": "", "disabled": true },
+                { "key": "sexo", "value": "", "disabled": true },
+                { "key": "unidadeSaude", "value": "", "disabled": true },
+                { "key": "medicamentos", "value": "", "disabled": true },
+                { "key": "exames", "value": "", "disabled": true },
+                { "key": "examesDetalhes", "value": "", "disabled": true },
+                { "key": "alergias", "value": "", "disabled": true },
+                { "key": "active", "value": "", "disabled": true },
+                { "key": "alta", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "get patient by id",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/patients/:id", "host": ["{{baseUrl}}"], "path": ["patients",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "create patient",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"paciente@exemplo.com\",\n  \"password\": \"123456\",\n  \"name\": \"Paciente Teste\",\n  \"cpf\": \"12345678901\",\n  \"birthDate\": \"1990-01-01\",\n  \"sexo\": \"MASCULINO\",\n  \"unidadeSaude\": \"UBS Centro\",\n  \"medicamentos\": \"\",\n  \"exames\": false,\n  \"alergias\": \"\"\n}" },
+            "url": { "raw": "{{baseUrl}}/patients", "host": ["{{baseUrl}}"], "path": ["patients"] }
+          }
+        },
+        {
+          "name": "create patient (public)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"publico@exemplo.com\",\n  \"password\": \"123456\",\n  \"name\": \"Auto Cadastro\",\n  \"cpf\": \"12345678901\",\n  \"birthDate\": \"1990-01-01\",\n  \"sexo\": \"FEMININO\"\n}" },
+            "url": { "raw": "{{baseUrl}}/patients/public", "host": ["{{baseUrl}}"], "path": ["patients","public"] }
+          }
+        },
+        {
+          "name": "update patient",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nome Atualizado\"\n}" },
+            "url": { "raw": "{{baseUrl}}/patients/:id", "host": ["{{baseUrl}}"], "path": ["patients",":id"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "delete patient",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/patients/:id", "host": ["{{baseUrl}}"], "path": ["patients",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "accept registration",
+          "request": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/patients/:id/accept-registration", "host": ["{{baseUrl}}"], "path": ["patients",":id","accept-registration"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "dar alta",
+          "request": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/patients/:id/alta", "host": ["{{baseUrl}}"], "path": ["patients",":id","alta"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "reverter alta",
+          "request": { "method": "PATCH", "url": { "raw": "{{baseUrl}}/patients/:id/reverter-alta", "host": ["{{baseUrl}}"], "path": ["patients",":id","reverter-alta"], "variable": [ { "key": "id", "value": "" } ] } }
+        }
+      ]
+    },
+    {
+      "name": "Agendamentos",
+      "item": [
+        {
+          "name": "create appointment",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"doctorId\": \"\",\n  \"patientId\": \"\",\n  \"scheduledAt\": \"2026-07-01T14:00:00.000Z\",\n  \"notes\": \"\"\n}" },
+            "url": { "raw": "{{baseUrl}}/appointments", "host": ["{{baseUrl}}"], "path": ["appointments"] }
+          }
+        },
+        {
+          "name": "list appointments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/appointments?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"], "path": ["appointments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "patientName", "value": "", "disabled": true },
+                { "key": "doctorName", "value": "", "disabled": true },
+                { "key": "scheduledFrom", "value": "", "disabled": true },
+                { "key": "scheduledTo", "value": "", "disabled": true },
+                { "key": "createdFrom", "value": "", "disabled": true },
+                { "key": "createdTo", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "list referrals (encaminhamentos)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/appointments/referrals?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"], "path": ["appointments","referrals"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "patientName", "value": "", "disabled": true },
+                { "key": "professionalName", "value": "", "disabled": true },
+                { "key": "scheduledFrom", "value": "", "disabled": true },
+                { "key": "scheduledTo", "value": "", "disabled": true },
+                { "key": "createdFrom", "value": "", "disabled": true },
+                { "key": "createdTo", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "get appointment by id",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/appointments/:id", "host": ["{{baseUrl}}"], "path": ["appointments",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "update appointment",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"notes\": \"Atualizado\"\n}" },
+            "url": { "raw": "{{baseUrl}}/appointments/:id", "host": ["{{baseUrl}}"], "path": ["appointments",":id"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "update appointment status",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"CONFIRMADO\"\n}" },
+            "url": { "raw": "{{baseUrl}}/appointments/:id/status", "host": ["{{baseUrl}}"], "path": ["appointments",":id","status"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "delete appointment",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/appointments/:id", "host": ["{{baseUrl}}"], "path": ["appointments",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "list professional users",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/appointments/users/professional?page=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["appointments","users","professional"], "query": [ { "key": "page", "value": "1" }, { "key": "pageSize", "value": "10" } ] } }
+        }
+      ]
+    },
+    {
+      "name": "Atendimentos",
+      "item": [
+        {
+          "name": "create attendance",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"patientId\": \"\",\n  \"professionalId\": \"\",\n  \"attendanceDate\": \"2026-07-01T14:00:00.000Z\",\n  \"chiefComplaint\": \"\",\n  \"diagnosis\": \"\",\n  \"treatment\": \"\"\n}" },
+            "url": { "raw": "{{baseUrl}}/attendances", "host": ["{{baseUrl}}"], "path": ["attendances"] }
+          }
+        },
+        {
+          "name": "create from appointment",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/attendances/from-appointment/:appointmentId", "host": ["{{baseUrl}}"], "path": ["attendances","from-appointment",":appointmentId"], "variable": [ { "key": "appointmentId", "value": "" } ] }
+          }
+        },
+        {
+          "name": "list attendances",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/attendances?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"], "path": ["attendances"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "patientName", "value": "", "disabled": true },
+                { "key": "professionalName", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "attendanceFrom", "value": "", "disabled": true },
+                { "key": "attendanceTo", "value": "", "disabled": true },
+                { "key": "createdFrom", "value": "", "disabled": true },
+                { "key": "createdTo", "value": "", "disabled": true },
+                { "key": "appointmentId", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "get attendance by id",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/attendances/:id", "host": ["{{baseUrl}}"], "path": ["attendances",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "update attendance",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"diagnosis\": \"Atualizado\"\n}" },
+            "url": { "raw": "{{baseUrl}}/attendances/:id", "host": ["{{baseUrl}}"], "path": ["attendances",":id"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "update attendance status",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"CONCLUIDO\"\n}" },
+            "url": { "raw": "{{baseUrl}}/attendances/:id/status", "host": ["{{baseUrl}}"], "path": ["attendances",":id","status"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "delete attendance",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/attendances/:id", "host": ["{{baseUrl}}"], "path": ["attendances",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "create prescription",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"medication\": \"\",\n  \"dosage\": \"\",\n  \"instructions\": \"\"\n}" },
+            "url": { "raw": "{{baseUrl}}/attendances/:attendanceId/prescriptions", "host": ["{{baseUrl}}"], "path": ["attendances",":attendanceId","prescriptions"], "variable": [ { "key": "attendanceId", "value": "" } ] }
+          }
+        },
+        {
+          "name": "update prescription",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"dosage\": \"Atualizado\"\n}" },
+            "url": { "raw": "{{baseUrl}}/attendances/:attendanceId/prescriptions/:prescriptionId", "host": ["{{baseUrl}}"], "path": ["attendances",":attendanceId","prescriptions",":prescriptionId"], "variable": [ { "key": "attendanceId", "value": "" }, { "key": "prescriptionId", "value": "" } ] }
+          }
+        },
+        {
+          "name": "delete prescription",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/attendances/:attendanceId/prescriptions/:prescriptionId", "host": ["{{baseUrl}}"], "path": ["attendances",":attendanceId","prescriptions",":prescriptionId"], "variable": [ { "key": "attendanceId", "value": "" }, { "key": "prescriptionId", "value": "" } ] } }
+        },
+        {
+          "name": "delete attachment",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/attendances/:attendanceId/attachments/:attachmentId", "host": ["{{baseUrl}}"], "path": ["attendances",":attendanceId","attachments",":attachmentId"], "variable": [ { "key": "attendanceId", "value": "" }, { "key": "attachmentId", "value": "" } ] } }
+        },
+        {
+          "name": "forms available",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/attendances/forms/available?isScreening=false", "host": ["{{baseUrl}}"], "path": ["attendances","forms","available"], "query": [ { "key": "isScreening", "value": "false" } ] } }
+        },
+        {
+          "name": "assign forms",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"formIds\": []\n}" },
+            "url": { "raw": "{{baseUrl}}/attendances/:attendanceId/assign-forms", "host": ["{{baseUrl}}"], "path": ["attendances",":attendanceId","assign-forms"], "variable": [ { "key": "attendanceId", "value": "" } ] }
+          }
+        },
+        {
+          "name": "unassign forms",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"formIds\": []\n}" },
+            "url": { "raw": "{{baseUrl}}/attendances/:attendanceId/unassign-forms", "host": ["{{baseUrl}}"], "path": ["attendances",":attendanceId","unassign-forms"], "variable": [ { "key": "attendanceId", "value": "" } ] }
+          }
+        },
+        {
+          "name": "assigned forms",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/attendances/:attendanceId/assigned-forms", "host": ["{{baseUrl}}"], "path": ["attendances",":attendanceId","assigned-forms"], "variable": [ { "key": "attendanceId", "value": "" } ] } }
+        },
+        {
+          "name": "link response",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"responseId\": \"\"\n}" },
+            "url": { "raw": "{{baseUrl}}/attendances/:attendanceId/link-response", "host": ["{{baseUrl}}"], "path": ["attendances",":attendanceId","link-response"], "variable": [ { "key": "attendanceId", "value": "" } ] }
+          }
+        },
+        {
+          "name": "unlink response",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/attendances/:attendanceId/responses/:responseId", "host": ["{{baseUrl}}"], "path": ["attendances",":attendanceId","responses",":responseId"], "variable": [ { "key": "attendanceId", "value": "" }, { "key": "responseId", "value": "" } ] } }
+        },
+        {
+          "name": "get responses",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/attendances/:attendanceId/responses", "host": ["{{baseUrl}}"], "path": ["attendances",":attendanceId","responses"], "variable": [ { "key": "attendanceId", "value": "" } ] } }
+        }
+      ]
+    },
+    {
+      "name": "Formulários",
+      "item": [
+        {
+          "name": "list forms",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/forms?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"], "path": ["forms"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "title", "value": "", "disabled": true },
+                { "key": "description", "value": "", "disabled": true },
+                { "key": "isScreening", "value": "", "disabled": true },
+                { "key": "responsesMin", "value": "", "disabled": true },
+                { "key": "responsesMax", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "list screenings",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/forms/screenings?page=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["forms","screenings"], "query": [ { "key": "page", "value": "1" }, { "key": "pageSize", "value": "10" } ] } }
+        },
+        {
+          "name": "create form",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Formulario de Triagem\",\n  \"description\": \"Descricao\",\n  \"questions\": [\n    {\n      \"text\": \"Pergunta 1\",\n      \"type\": \"SINGLE_CHOICE\",\n      \"required\": true,\n      \"options\": [ { \"text\": \"Sim\", \"value\": 1 }, { \"text\": \"Nao\", \"value\": 0 } ]\n    }\n  ],\n  \"scoreRules\": []\n}" },
+            "url": { "raw": "{{baseUrl}}/forms", "host": ["{{baseUrl}}"], "path": ["forms"] }
+          }
+        },
+        {
+          "name": "get form by id",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/forms/:id", "host": ["{{baseUrl}}"], "path": ["forms",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "update form",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Titulo Atualizado\",\n  \"questions\": []\n}" },
+            "url": { "raw": "{{baseUrl}}/forms/:id", "host": ["{{baseUrl}}"], "path": ["forms",":id"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "delete form",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/forms/:id", "host": ["{{baseUrl}}"], "path": ["forms",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "activate screening",
+          "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/forms/:id/activate-screening", "host": ["{{baseUrl}}"], "path": ["forms",":id","activate-screening"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "deactivate screening",
+          "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/forms/:id/deactivate-screening", "host": ["{{baseUrl}}"], "path": ["forms",":id","deactivate-screening"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "toggle screening",
+          "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/forms/:id/toggle-screening", "host": ["{{baseUrl}}"], "path": ["forms",":id","toggle-screening"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "submit response",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": \"\",\n  \"answers\": []\n}" },
+            "url": { "raw": "{{baseUrl}}/forms/:id/responses", "host": ["{{baseUrl}}"], "path": ["forms",":id","responses"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "update response",
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": \"\",\n  \"answers\": []\n}" },
+            "url": { "raw": "{{baseUrl}}/forms/:id/responses/:responseId", "host": ["{{baseUrl}}"], "path": ["forms",":id","responses",":responseId"], "variable": [ { "key": "id", "value": "" }, { "key": "responseId", "value": "" } ] }
+          }
+        },
+        {
+          "name": "delete response",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/forms/:id/responses/:responseId", "host": ["{{baseUrl}}"], "path": ["forms",":id","responses",":responseId"], "variable": [ { "key": "id", "value": "" }, { "key": "responseId", "value": "" } ] } }
+        },
+        {
+          "name": "list form responses",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/forms/:id/responses?page=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["forms",":id","responses"], "query": [ { "key": "page", "value": "1" }, { "key": "pageSize", "value": "10" } ], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "get form response",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/forms/:id/responses/:responseId", "host": ["{{baseUrl}}"], "path": ["forms",":id","responses",":responseId"], "variable": [ { "key": "id", "value": "" }, { "key": "responseId", "value": "" } ] } }
+        },
+        {
+          "name": "list all responses",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/forms/responses/list?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"], "path": ["forms","responses","list"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "formTitle", "value": "", "disabled": true },
+                { "key": "patientName", "value": "", "disabled": true },
+                { "key": "from", "value": "", "disabled": true },
+                { "key": "to", "value": "", "disabled": true },
+                { "key": "isScreening", "value": "", "disabled": true },
+                { "key": "scoreMin", "value": "", "disabled": true },
+                { "key": "scoreMax", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "get response detail",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/forms/response/:responseId", "host": ["{{baseUrl}}"], "path": ["forms","response",":responseId"], "variable": [ { "key": "responseId", "value": "" } ] } }
+        },
+        {
+          "name": "users to assign",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/forms/users/toAssign",
+              "host": ["{{baseUrl}}"], "path": ["forms","users","toAssign"],
+              "query": [
+                { "key": "name", "value": "", "disabled": true },
+                { "key": "email", "value": "", "disabled": true },
+                { "key": "sexo", "value": "", "disabled": true },
+                { "key": "unidadeSaude", "value": "", "disabled": true },
+                { "key": "medicamentos", "value": "", "disabled": true },
+                { "key": "exames", "value": "", "disabled": true },
+                { "key": "alergias", "value": "", "disabled": true },
+                { "key": "birthDateFrom", "value": "", "disabled": true },
+                { "key": "birthDateTo", "value": "", "disabled": true },
+                { "key": "ageMin", "value": "", "disabled": true },
+                { "key": "ageMax", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "assigned users",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/forms/:id/assigned?page=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["forms",":id","assigned"], "query": [ { "key": "page", "value": "1" }, { "key": "pageSize", "value": "10" } ], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "assign users",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"userIds\": []\n}" },
+            "url": { "raw": "{{baseUrl}}/forms/:id/assign", "host": ["{{baseUrl}}"], "path": ["forms",":id","assign"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "unassign users",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"userIds\": []\n}" },
+            "url": { "raw": "{{baseUrl}}/forms/:id/unassign", "host": ["{{baseUrl}}"], "path": ["forms",":id","unassign"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "my forms",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/forms/user/my", "host": ["{{baseUrl}}"], "path": ["forms","user","my"] } }
+        }
+      ]
+    },
+    {
+      "name": "Logs",
+      "item": [
+        {
+          "name": "list logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/logs?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"], "path": ["logs"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "userId", "value": "", "disabled": true },
+                { "key": "route", "value": "", "disabled": true },
+                { "key": "statusCode", "value": "", "disabled": true },
+                { "key": "createdFrom", "value": "", "disabled": true },
+                { "key": "createdTo", "value": "", "disabled": true },
+                { "key": "seen", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "get log by id",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/logs/:id", "host": ["{{baseUrl}}"], "path": ["logs",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "mark log seen",
+          "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/logs/:id/seen", "host": ["{{baseUrl}}"], "path": ["logs",":id","seen"], "variable": [ { "key": "id", "value": "" } ] } }
+        }
+      ]
+    },
+    {
+      "name": "Notificações",
+      "item": [
+        {
+          "name": "create notification",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Aviso\",\n  \"body\": \"Conteudo da notificacao\",\n  \"category\": \"geral\",\n  \"priority\": 0,\n  \"targets\": { \"userIds\": [] },\n  \"sendPush\": false\n}" },
+            "url": { "raw": "{{baseUrl}}/notifications", "host": ["{{baseUrl}}"], "path": ["notifications"] }
+          }
+        },
+        {
+          "name": "list notifications",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/notifications?page=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["notifications"], "query": [ { "key": "page", "value": "1" }, { "key": "pageSize", "value": "10" }, { "key": "category", "value": "", "disabled": true } ] } }
+        },
+        {
+          "name": "unread count",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/notifications/unread-count", "host": ["{{baseUrl}}"], "path": ["notifications","unread-count"] } }
+        },
+        {
+          "name": "mark read",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"read\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/notifications/:id/read", "host": ["{{baseUrl}}"], "path": ["notifications",":id","read"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "mark all read",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"category\": \"\",\n  \"before\": \"\"\n}" },
+            "url": { "raw": "{{baseUrl}}/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["notifications","read-all"] }
+          }
+        },
+        {
+          "name": "archive notification",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/notifications/:id", "host": ["{{baseUrl}}"], "path": ["notifications",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        }
+      ]
+    },
+    {
+      "name": "Push (FCM)",
+      "item": [
+        {
+          "name": "subscribe device",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"deviceToken\": \"FCM_TOKEN\",\n  \"platform\": \"web\"\n}" },
+            "url": { "raw": "{{baseUrl}}/push/subscribe", "host": ["{{baseUrl}}"], "path": ["push","subscribe"] }
+          }
+        },
+        {
+          "name": "unsubscribe device",
+          "request": {
+            "method": "DELETE",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"deviceToken\": \"FCM_TOKEN\"\n}" },
+            "url": { "raw": "{{baseUrl}}/push/subscribe", "host": ["{{baseUrl}}"], "path": ["push","subscribe"] }
+          }
+        },
+        {
+          "name": "send to user",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Titulo\",\n  \"body\": \"Mensagem\",\n  \"data\": {},\n  \"imageUrl\": \"\"\n}" },
+            "url": { "raw": "{{baseUrl}}/push/send", "host": ["{{baseUrl}}"], "path": ["push","send"] }
+          }
+        },
+        {
+          "name": "send to multiple",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"userIds\": [],\n  \"title\": \"Titulo\",\n  \"body\": \"Mensagem\"\n}" },
+            "url": { "raw": "{{baseUrl}}/push/send-multiple", "host": ["{{baseUrl}}"], "path": ["push","send-multiple"] }
+          }
+        },
+        {
+          "name": "send to topic",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"topic\": \"avisos\",\n  \"title\": \"Titulo\",\n  \"body\": \"Mensagem\"\n}" },
+            "url": { "raw": "{{baseUrl}}/push/send-topic", "host": ["{{baseUrl}}"], "path": ["push","send-topic"] }
+          }
+        },
+        {
+          "name": "subscribe to topic",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"userIds\": [],\n  \"topic\": \"avisos\"\n}" },
+            "url": { "raw": "{{baseUrl}}/push/subscribe-topic", "host": ["{{baseUrl}}"], "path": ["push","subscribe-topic"] }
+          }
+        },
+        {
+          "name": "unsubscribe from topic",
+          "request": {
+            "method": "DELETE",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"userIds\": [],\n  \"topic\": \"avisos\"\n}" },
+            "url": { "raw": "{{baseUrl}}/push/subscribe-topic", "host": ["{{baseUrl}}"], "path": ["push","subscribe-topic"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard Admin",
+      "item": [
+        {
+          "name": "forms responses statistics",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/admin-dash/forms/responses/statistics?page=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["admin-dash","forms","responses","statistics"], "query": [ { "key": "page", "value": "1" }, { "key": "pageSize", "value": "10" }, { "key": "from", "value": "", "disabled": true }, { "key": "to", "value": "", "disabled": true }, { "key": "formId", "value": "", "disabled": true } ] } }
+        },
+        {
+          "name": "forms by origin",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/admin-dash/forms/statistics/by-origin", "host": ["{{baseUrl}}"], "path": ["admin-dash","forms","statistics","by-origin"], "query": [ { "key": "from", "value": "", "disabled": true }, { "key": "to", "value": "", "disabled": true } ] } }
+        },
+        {
+          "name": "top forms",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/admin-dash/forms/statistics/top-forms?limit=10", "host": ["{{baseUrl}}"], "path": ["admin-dash","forms","statistics","top-forms"], "query": [ { "key": "limit", "value": "10" }, { "key": "from", "value": "", "disabled": true }, { "key": "to", "value": "", "disabled": true } ] } }
+        },
+        {
+          "name": "average scores",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/admin-dash/forms/statistics/average-scores", "host": ["{{baseUrl}}"], "path": ["admin-dash","forms","statistics","average-scores"], "query": [ { "key": "from", "value": "", "disabled": true }, { "key": "to", "value": "", "disabled": true } ] } }
+        },
+        {
+          "name": "responses timeline",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/admin-dash/forms/responses/timeline?groupBy=day", "host": ["{{baseUrl}}"], "path": ["admin-dash","forms","responses","timeline"], "query": [ { "key": "groupBy", "value": "day" }, { "key": "from", "value": "", "disabled": true }, { "key": "to", "value": "", "disabled": true } ] } }
+        },
+        {
+          "name": "referrals by destination",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/admin-dash/referrals/by-destination", "host": ["{{baseUrl}}"], "path": ["admin-dash","referrals","by-destination"], "query": [ { "key": "scheduledFrom", "value": "", "disabled": true }, { "key": "scheduledTo", "value": "", "disabled": true }, { "key": "createdFrom", "value": "", "disabled": true }, { "key": "createdTo", "value": "", "disabled": true }, { "key": "status", "value": "", "disabled": true }, { "key": "patientName", "value": "", "disabled": true }, { "key": "professionalName", "value": "", "disabled": true }, { "key": "doctorName", "value": "", "disabled": true } ] } }
+        },
+        {
+          "name": "referrals timeline",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/admin-dash/referrals/timeline?groupBy=day", "host": ["{{baseUrl}}"], "path": ["admin-dash","referrals","timeline"], "query": [ { "key": "groupBy", "value": "day" }, { "key": "from", "value": "", "disabled": true }, { "key": "to", "value": "", "disabled": true } ] } }
+        }
+      ]
+    },
+    {
+      "name": "Chat (IA)",
+      "item": [
+        {
+          "name": "create chat",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Novo chat\"\n}" },
+            "url": { "raw": "{{baseUrl}}/chats", "host": ["{{baseUrl}}"], "path": ["chats"] }
+          }
+        },
+        {
+          "name": "list chats",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/chats", "host": ["{{baseUrl}}"], "path": ["chats"] } }
+        },
+        {
+          "name": "get chat",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/chats/:chatId", "host": ["{{baseUrl}}"], "path": ["chats",":chatId"], "variable": [ { "key": "chatId", "value": "" } ] } }
+        },
+        {
+          "name": "add message",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"Ola\"\n}" },
+            "url": { "raw": "{{baseUrl}}/chats/:chatId/messages", "host": ["{{baseUrl}}"], "path": ["chats",":chatId","messages"], "variable": [ { "key": "chatId", "value": "" } ] }
+          }
+        },
+        {
+          "name": "delete chat",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/chats/:chatId", "host": ["{{baseUrl}}"], "path": ["chats",":chatId"], "variable": [ { "key": "chatId", "value": "" } ] } }
+        },
+        {
+          "name": "clear chat",
+          "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/chats/:chatId/clear", "host": ["{{baseUrl}}"], "path": ["chats",":chatId","clear"], "variable": [ { "key": "chatId", "value": "" } ] } }
+        }
+      ]
+    },
+    {
+      "name": "Triggers / Agentes IA",
+      "item": [
+        {
+          "name": "list agents",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/triggers/agents", "host": ["{{baseUrl}}"], "path": ["triggers","agents"] } }
+        },
+        {
+          "name": "default agent",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/triggers/agents/default", "host": ["{{baseUrl}}"], "path": ["triggers","agents","default"] } }
+        },
+        {
+          "name": "get agent",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/triggers/agents/:id", "host": ["{{baseUrl}}"], "path": ["triggers","agents",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "create agent",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Agente\",\n  \"description\": \"\"\n}" },
+            "url": { "raw": "{{baseUrl}}/triggers/agents", "host": ["{{baseUrl}}"], "path": ["triggers","agents"] }
+          }
+        },
+        {
+          "name": "update agent",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Atualizado\"\n}" },
+            "url": { "raw": "{{baseUrl}}/triggers/agents/:id", "host": ["{{baseUrl}}"], "path": ["triggers","agents",":id"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "delete agent",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/triggers/agents/:id", "host": ["{{baseUrl}}"], "path": ["triggers","agents",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "list triggers",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/triggers?agentId=", "host": ["{{baseUrl}}"], "path": ["triggers"], "query": [ { "key": "agentId", "value": "", "disabled": true } ] } }
+        },
+        {
+          "name": "stats",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/triggers/stats?agentId=", "host": ["{{baseUrl}}"], "path": ["triggers","stats"], "query": [ { "key": "agentId", "value": "", "disabled": true } ] } }
+        },
+        {
+          "name": "get trigger",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/triggers/:id", "host": ["{{baseUrl}}"], "path": ["triggers",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "create trigger",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Trigger\",\n  \"agentId\": \"\",\n  \"keywords\": []\n}" },
+            "url": { "raw": "{{baseUrl}}/triggers", "host": ["{{baseUrl}}"], "path": ["triggers"] }
+          }
+        },
+        {
+          "name": "update trigger",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Atualizado\"\n}" },
+            "url": { "raw": "{{baseUrl}}/triggers/:id", "host": ["{{baseUrl}}"], "path": ["triggers",":id"], "variable": [ { "key": "id", "value": "" } ] }
+          }
+        },
+        {
+          "name": "toggle trigger",
+          "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/triggers/:id/toggle", "host": ["{{baseUrl}}"], "path": ["triggers",":id","toggle"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "delete trigger",
+          "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/triggers/:id", "host": ["{{baseUrl}}"], "path": ["triggers",":id"], "variable": [ { "key": "id", "value": "" } ] } }
+        },
+        {
+          "name": "generate keywords",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Agendamento\",\n  \"description\": \"Intencao de agendar consulta\"\n}" },
+            "url": { "raw": "{{baseUrl}}/triggers/generate-keywords", "host": ["{{baseUrl}}"], "path": ["triggers","generate-keywords"] }
+          }
+        },
+        {
+          "name": "test message",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"message\": \"Quero marcar uma consulta\",\n  \"history\": [],\n  \"agentId\": \"\"\n}" },
+            "url": { "raw": "{{baseUrl}}/triggers/test", "host": ["{{baseUrl}}"], "path": ["triggers","test"] }
+          }
+        },
+        {
+          "name": "logs stream (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Accept", "value": "text/event-stream" } ],
+            "url": { "raw": "{{baseUrl}}/triggers/logs/stream", "host": ["{{baseUrl}}"], "path": ["triggers","logs","stream"] }
+          }
+        }
+      ]
+    }
+  ]
+}

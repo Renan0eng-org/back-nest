@@ -2,75 +2,42 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-async function seedNiveisAcesso() {
-  console.log('🔑 Seeding Nivel_Acesso...');
+const ALL_PERMS = { visualizar: true, criar: true, editar: true, excluir: true, relatorio: true };
 
-  // Nivel 1 - Não Autorizado
-  await prisma.nivel_Acesso.upsert({
-    where: { idNivelAcesso: 1 },
-    update: {},
-    create: { idNivelAcesso: 1, nome: 'Não Autorizado' },
-  });
+const MENUS = [
+  { nome: 'Dashboard Admin', slug: 'dash-admin' },
+  { nome: 'Dashboard Profissional', slug: 'dash-professional' },
+  { nome: 'Acessos / Permissões', slug: 'acesso' },
+  { nome: 'Ativação de Usuários', slug: 'ativacao-usuarios' },
+  { nome: 'Gerenciar Usuários', slug: 'gerenciar-usuarios' },
+  { nome: 'Formulários', slug: 'formulario' },
+  { nome: 'Respostas de Formulários', slug: 'respostas' },
+  { nome: 'Atribuição de Usuários', slug: 'atribuir-usuarios' },
+  { nome: 'Pacientes', slug: 'paciente' },
+  { nome: 'Agendamentos', slug: 'agendamento' },
+  { nome: 'Encaminhamentos', slug: 'encaminhamento' },
+  { nome: 'Logs de Acesso', slug: 'log' },
+  { nome: 'Esteira de Pacientes', slug: 'esteira-pacientes' },
+  { nome: 'Chat AI', slug: 'chat-ai' },
+  { nome: 'Chat AI Admin', slug: 'chat-ai-admin' },
+  { nome: 'Dash Professional Paciente', slug: 'dash-professional-paciente' },
+  { nome: 'Notifications', slug: 'notifications' },
+  { nome: 'Boas Vindas', slug: 'boas-vindas' },
+];
 
-  // Nivel 2 - Admin
-  await prisma.nivel_Acesso.upsert({
-    where: { idNivelAcesso: 2 },
-    update: {},
-    create: { idNivelAcesso: 2, nome: 'Admin' },
-  });
+const NIVEIS = [
+  { id: 1, nome: 'Não Autorizado', descricao: 'Sem acesso ao sistema' },
+  { id: 2, nome: 'Admin', descricao: 'Acesso total ao sistema' },
+  { id: 3, nome: 'Admin Prefeitura', descricao: 'Administração da prefeitura' },
+  { id: 4, nome: 'Equipe', descricao: 'Equipe de saúde' },
+  { id: 5, nome: 'Médico', descricao: 'Profissional médico' },
+];
 
-  console.log('✅ Nivel_Acesso seeded');
-}
-
-async function seedMenuAcesso() {
-  console.log('📋 Seeding Menu_Acesso...');
-
-  const menus = [
-    { nome: 'Dashboard Admin', slug: 'dash-admin' },
-    { nome: 'Dashboard Profissional', slug: 'dash-professional' },
-    { nome: 'Acessos / Permissões', slug: 'acesso' },
-    { nome: 'Ativação de Usuários', slug: 'ativacao-usuarios' },
-    { nome: 'Gerenciar Usuários', slug: 'gerenciar-usuarios' },
-    { nome: 'Formulários', slug: 'formulario' },
-    { nome: 'Respostas de Formulários', slug: 'respostas' },
-    { nome: 'Atribuição de Usuários', slug: 'atribuir-usuarios' },
-    { nome: 'Pacientes', slug: 'paciente' },
-    { nome: 'Agendamentos', slug: 'agendamento' },
-    { nome: 'Encaminhamentos', slug: 'encaminhamento' },
-    { nome: 'Logs de Acesso', slug: 'log' },
-    { nome: 'Esteira de Pacientes', slug: 'esteira-pacientes' },
-    { nome: 'Chat AI', slug: 'chat-ai' },
-    { nome: 'Chat AI Admin', slug: 'chat-ai-admin' },
-    { nome: 'Dash Professional Paciente', slug: 'dash-professional-paciente' },
-    { nome: 'Notifications', slug: 'notifications' },
-  ];
-
-  for (const menu of menus) {
-    const existing = await prisma.menu_Acesso.findFirst({ where: { slug: menu.slug } });
-    if (!existing) {
-      await prisma.menu_Acesso.create({
-        data: {
-          nome: menu.nome,
-          slug: menu.slug,
-          visualizar: true,
-          criar: true,
-          editar: true,
-          excluir: true,
-          relatorio: true,
-        },
-      });
-    }
-  }
-
-  console.log('✅ Menu_Acesso seeded');
-}
-
-async function seedAdminMenuPermissions() {
-  console.log('🔗 Linking menus to Admin nivel...');
-
-  const adminSlugs = [
-    'dash-professional',
-    'acesso',
+const NIVEL_SLUGS: Record<number, string[]> = {
+  1: [], // Não Autorizado: nenhum
+  2: MENUS.map(m => m.slug), // Admin: todos
+  3: [ // Admin Prefeitura
+    'dash-admin',
     'ativacao-usuarios',
     'gerenciar-usuarios',
     'formulario',
@@ -78,40 +45,107 @@ async function seedAdminMenuPermissions() {
     'atribuir-usuarios',
     'paciente',
     'agendamento',
-    'esteira-pacientes',
     'encaminhamento',
-    'log',
-    'chat-ai',
-    'chat-ai-admin',
-    'dash-professional-paciente',
-    'notifications',
-  ];
+    'esteira-pacientes',
+    'acesso',
+    'boas-vindas',
+  ],
+  4: [ // Equipe
+    'dash-professional',
+    'ativacao-usuarios',
+    'formulario',
+    'respostas',
+    'atribuir-usuarios',
+    'paciente',
+    'encaminhamento',
+    'esteira-pacientes',
+    'acesso',
+  ],
+  5: [ // Médico
+    'dash-professional',
+    'ativacao-usuarios',
+    'formulario',
+    'respostas',
+    'atribuir-usuarios',
+    'paciente',
+    'agendamento',
+    'esteira-pacientes',
+  ],
+};
 
-  const adminNivel = await prisma.nivel_Acesso.findUnique({
-    where: { idNivelAcesso: 2 },
-    include: { menus: true },
-  });
+async function seedMenus() {
+  console.log('Seeding menus...');
+  for (const menu of MENUS) {
+    await prisma.menu_Acesso.upsert({
+      where: { slug: menu.slug },
+      update: { nome: menu.nome },
+      create: { nome: menu.nome, slug: menu.slug },
+    });
+  }
+  console.log(`  ${MENUS.length} menus ok`);
+}
 
-  if (!adminNivel) return;
-
-  const existingSlugs = new Set(adminNivel.menus.map((m) => m.slug));
-
-  for (const slug of adminSlugs) {
-    if (existingSlugs.has(slug)) continue;
-    const menu = await prisma.menu_Acesso.findFirst({ where: { slug } });
-    if (menu) {
-      await prisma.nivel_Acesso.update({
-        where: { idNivelAcesso: 2 },
-        data: { menus: { connect: { idMenuAcesso: menu.idMenuAcesso } } },
-      });
-    }
+async function seedNiveis() {
+  console.log('Seeding niveis de acesso...');
+  for (const nivel of NIVEIS) {
+    await prisma.nivel_Acesso.upsert({
+      where: { idNivelAcesso: nivel.id },
+      update: { nome: nivel.nome, descricao: nivel.descricao },
+      create: { idNivelAcesso: nivel.id, nome: nivel.nome, descricao: nivel.descricao },
+    });
   }
 
-  console.log('✅ Admin menu permissions linked');
+  // Advance sequence past our manually-set IDs
+  const maxId = Math.max(...NIVEIS.map(n => n.id));
+  await prisma.$executeRawUnsafe(
+    `SELECT setval(pg_get_serial_sequence('"Nivel_Acesso"', 'idNivelAcesso'), $1, true)`,
+    maxId,
+  );
+
+  console.log(`  ${NIVEIS.length} niveis ok`);
+}
+
+async function seedPermissoes() {
+  console.log('Seeding permissoes por nivel...');
+
+  const allMenus = await prisma.menu_Acesso.findMany();
+  const slugToId = new Map(allMenus.map(m => [m.slug, m.idMenuAcesso]));
+
+  for (const nivel of NIVEIS) {
+    const slugs = NIVEL_SLUGS[nivel.id];
+
+    // Remove existing permissions for this level
+    await prisma.nivel_Menu_Permissao.deleteMany({
+      where: { nivelAcessoId: nivel.id },
+    });
+
+    if (slugs.length === 0) continue;
+
+    const data = slugs
+      .map(slug => {
+        const menuId = slugToId.get(slug);
+        if (!menuId) {
+          console.warn(`  Menu slug "${slug}" not found, skipping`);
+          return null;
+        }
+        return {
+          nivelAcessoId: nivel.id,
+          menuAcessoId: menuId,
+          ...ALL_PERMS,
+        };
+      })
+      .filter(Boolean) as any[];
+
+    if (data.length > 0) {
+      await prisma.nivel_Menu_Permissao.createMany({ data });
+    }
+
+    console.log(`  ${nivel.nome}: ${data.length} menus`);
+  }
 }
 
 async function seedAdminUser() {
-  console.log('👤 Seeding Admin user...');
+  console.log('Seeding admin user...');
 
   const existing = await prisma.user.findUnique({ where: { email: 'renan.nardi.dev@gmail.com' } });
 
@@ -141,16 +175,16 @@ async function seedAdminUser() {
     });
   }
 
-  console.log('✅ Admin user seeded');
+  console.log('  Admin user ok');
 }
 
 async function seedTriagemForm() {
-  console.log('📝 Seeding Triagem Dor Crônica form...');
+  console.log('Seeding triagem form...');
 
   const formId = '7f9e8d4a-c1b2-4a3f-9e8c-5b2d1f0e9c8a';
   const existing = await prisma.form.findUnique({ where: { idForm: formId } });
   if (existing) {
-    console.log('⏭️  Form already exists, skipping');
+    console.log('  Form already exists, skipping');
     return;
   }
 
@@ -338,24 +372,24 @@ async function seedTriagemForm() {
     },
   });
 
-  console.log('✅ Triagem form seeded');
+  console.log('  Triagem form ok');
 }
 
 async function main() {
-  console.log('🌱 Starting seed...\n');
+  console.log('Starting seed...\n');
 
-  await seedNiveisAcesso();
-  await seedMenuAcesso();
-  await seedAdminMenuPermissions();
+  await seedMenus();
+  await seedNiveis();
+  await seedPermissoes();
   await seedAdminUser();
   await seedTriagemForm();
 
-  console.log('\n🎉 Seed completed!');
+  console.log('\nSeed completed!');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed error:', e);
+    console.error('Seed error:', e);
     process.exit(1);
   })
   .finally(async () => {

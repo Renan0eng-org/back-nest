@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPip
 import { Menu } from 'src/auth/menu.decorator';
 import { RefreshTokenGuard } from 'src/auth/refresh-token.guard';
 import { AcessoService } from './acesso.service';
-import { CreateMenuAcessoDto, CreateNivelAcessoDto, UpdateMenuAcessoDto, UpdateNivelAcessoDto, UpdateNivelMenusDto, UpdateUserNivelDto } from './dto/acesso.dto';
+import { CreateMenuAcessoDto, CreateNivelAcessoDto, UpdateMenuAcessoDto, UpdateNivelAcessoDto, UpdateNivelMenusDto, UpdateNivelPermissoesDto, UpdateUserNivelDto } from './dto/acesso.dto';
 import { UpdateUserStatusDto } from './dto/update-user.dto';
 
 @Controller('admin/acesso')
@@ -37,11 +37,26 @@ export class AcessoController {
         return this.acessoService.deleteNivel(id);
     }
 
+    @Get('niveis/:id/permissoes')
+    @UseGuards(RefreshTokenGuard)
+    findNivelPermissoes(@Param('id', ParseIntPipe) id: number) {
+        return this.acessoService.findNivelComPermissoes(id);
+    }
+
+    @Put('niveis/:id/permissoes')
+    @UseGuards(RefreshTokenGuard)
+    updateNivelPermissoes(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() data: UpdateNivelPermissoesDto,
+    ) {
+        return this.acessoService.updateNivelPermissoes(id, data.permissoes);
+    }
+
     @Put('niveis/:id/menus')
     @UseGuards(RefreshTokenGuard)
     updateNivelMenus(
         @Param('id', ParseIntPipe) id: number,
-        @Body() data: UpdateNivelMenusDto, 
+        @Body() data: UpdateNivelMenusDto,
     ) {
         return this.acessoService.updateNivelMenus(id, data.menuIds);
     }
@@ -115,7 +130,7 @@ export class AcessoController {
     @Menu('ativacao-usuarios')
     updateUserStatus(
         @Param('id') id: string,
-        @Body() data: UpdateUserStatusDto, 
+        @Body() data: UpdateUserStatusDto,
     ) {
         return this.acessoService.updateUserStatus(id, data.active);
     }
