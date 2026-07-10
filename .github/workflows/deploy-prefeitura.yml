@@ -15,11 +15,13 @@ jobs:
         with:
           ref: prefeitura
 
-      - name: Login no Docker Hub
+      - name: Optional Docker Hub login
         run: |
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login \
-            -u "${{ secrets.DOCKERHUB_USERNAME }}" \
-            --password-stdin
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          else
+            echo "Skipping Docker Hub login: secrets not set"
+          fi
 
       - name: Build Docker image
         run: |
