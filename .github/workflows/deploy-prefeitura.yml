@@ -1,0 +1,30 @@
+name: Build Backend Prefeitura (Docker)
+
+on:
+  push:
+    branches:
+      - prefeitura
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: prefeitura
+
+      - name: Login no Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login \
+            -u "${{ secrets.DOCKERHUB_USERNAME }}" \
+            --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker build -t devnardi/back-prefeitura:prefeitura .
+
+      - name: Push Docker image
+        run: |
+          docker push devnardi/back-prefeitura:prefeitura
