@@ -17,6 +17,9 @@ RUN npx prisma generate
 # Build Nest
 RUN npm run build
 
+# Compila o seed (prisma/seed.ts) para JS, já que ts-node não existe em produção
+RUN npx tsc prisma/seed.ts --rootDir prisma --outDir dist/prisma --module commonjs --target ES2023 --esModuleInterop --skipLibCheck
+
 # =========================
 # Etapa 2 — Produção
 # =========================
@@ -45,4 +48,4 @@ RUN npx prisma generate
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/prisma/seed.js && node dist/src/main.js"]
