@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  backend:
+    image: devnardi/back-prefeitura:prefeitura
+    container_name: back-prefeitura
+    ports:
+      - "9292:9292"
+    env_file:
+      - /opt/back-prefeitura/.env.prefeitura
+    depends_on:
+      - db
+    restart: always
+
+  db:
+    image: postgres:15
+    container_name: postgres-prefeitura
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: prefeitura
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:

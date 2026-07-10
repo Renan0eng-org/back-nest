@@ -51,6 +51,8 @@ model User {
   autoCadastro   Boolean?    @default(false)
   alta           Boolean     @default(false)
   altaAt         DateTime?
+  emailVerified   Boolean    @default(false)
+  emailVerifiedAt DateTime?
 
   fromAssigned   Form[] @relation("FormAssignedUsers")
 
@@ -76,6 +78,16 @@ model User {
   chatLogs      ChatLog[]
 
   passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+
+  // Groups
+  gruposMembro  Grupo_Membro[]
+  gruposCriados Grupo[] @relation("GrupoCreator")
+  formsCriados  Form[]  @relation("FormCreator")
+
+  // Grupo ao qual o paciente pertence (para escopo de visualização)
+  grupoPacienteId Int?
+  grupoPaciente   Grupo? @relation("GrupoPacientes", fields: [grupoPacienteId], references: [idGrupo])
 
   @@index([idUser])
   @@index([user_id_create])
@@ -141,10 +153,17 @@ model Form {
   assignedUsers  User[] @relation("FormAssignedUsers")
   assignedAttendances  Attendance[] @relation("FormAssignedAttendances")
   scoreRules  ScoreRule[]
+  createdById String?
+  createdBy   User?      @relation("FormCreator", fields: [createdById], references: [idUser])
+  grupoId     Int?
+  grupo       Grupo?     @relation("GrupoFormularios", fields: [grupoId], references: [idGrupo])
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   isScreening Boolean    @default(false)
   active      Boolean    @default(true)
+
+  @@index([createdById])
+  @@index([grupoId])
 }
 
 model ScoreRule {
@@ -510,6 +529,54 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@index([token])
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [idUser], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+// ========================================
+// Groups (compartilhamento de dados entre profissionais)
+// ========================================
+
+model Grupo {
+  idGrupo     Int            @id @default(autoincrement())
+  nome        String
+  descricao   String?
+  isDefault   Boolean        @default(false)
+  createdById String?
+  createdBy   User?          @relation("GrupoCreator", fields: [createdById], references: [idUser])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  membros     Grupo_Membro[]
+  pacientes   User[]         @relation("GrupoPacientes")
+  formularios Form[]         @relation("GrupoFormularios")
+
+  @@index([createdById])
+  @@index([isDefault])
+}
+
+model Grupo_Membro {
+  id       Int      @id @default(autoincrement())
+  grupoId  Int
+  userId   String
+  joinedAt DateTime @default(now())
+
+  grupo Grupo @relation(fields: [grupoId], references: [idGrupo], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [idUser], onDelete: Cascade)
+
+  @@unique([grupoId, userId])
+  @@index([grupoId])
   @@index([userId])
 }
 

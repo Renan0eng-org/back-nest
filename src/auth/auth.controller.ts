@@ -45,7 +45,17 @@ export class AuthController {
     @Post('register-web')
     @Public()
     async registerWeb(@Body() data: RegisterUserDto) {
-        return this.authService.createUser({ ...data, type: 'USUARIO' } as any);
+        const user = await this.authService.createUser({ ...data, type: 'USUARIO' } as any);
+
+        // Envia e-mail de verificação (não bloqueia o cadastro se o SMTP falhar)
+        try {
+            await this.authService.sendVerificationEmail(user.idUser);
+        } catch (err) {
+            console.error('Falha ao enviar e-mail de verificação no cadastro:', err?.message || err);
+        }
+
+        const { password: _, ...userWithoutPassword } = user as any;
+        return userWithoutPassword;
     }
 
     @Post('login')
@@ -176,6 +186,22 @@ export class AuthController {
     async forgotPassword(@Body('email') email: string) {
         if (!email) throw new BadRequestException('E-mail é obrigatório.');
         return this.authService.forgotPassword(email);
+    }
+
+    @Post('verify-email')
+    @Public()
+    async verifyEmail(@Body('token') token: string) {
+        if (!token) throw new BadRequestException('Token é obrigatório.');
+        return this.authService.verifyEmail(token);
+    }
+
+    @Post('resend-verification')
+    async resendVerification(@Req() request: Request) {
+        const token = request.cookies['refresh_token'];
+        if (!token) throw new UnauthorizedException('Token não fornecido');
+
+        const dataToken = await this.authService.validateToken(token, { type: 'refresh' });
+        return this.authService.sendVerificationEmail(dataToken.dataToken.sub);
     }
 
     @Post('reset-password')

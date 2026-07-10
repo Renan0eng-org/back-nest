@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { AppTokenGuard } from 'src/auth/app-token.guard';
 import { AuthService } from 'src/auth/auth.service';
 import { Menu } from 'src/auth/menu.decorator';
+import { GruposService } from 'src/grupos/grupos.service';
 import { SaveFormDto } from './dto/save-form.dto';
 import { SubmitResponseDto } from './dto/submit-response.dto';
 import { FormService } from './form.service';
@@ -14,10 +15,12 @@ export class FormController {
     constructor(
         private readonly formService: FormService,
         private readonly authService: AuthService,
+        private readonly gruposService: GruposService,
     ) { }
 
     @Get()
-    findAll(
+    async findAll(
+        @Req() request: Request,
         @Query('page') page?: string,
         @Query('pageSize') pageSize?: string,
         @Query('title') title?: string,
@@ -55,22 +58,24 @@ export class FormController {
             if (!isNaN(v)) filters.responsesMax = v;
         }
 
-        const opts = p || ps ? { page: p, pageSize: ps, filters } : { filters } as any;
-        return (this.formService as any).findAll ? (this.formService as any).findAll(opts) : this.formService.findAll();
+        const scope = await this.gruposService.getScopeForUser((request as any).user);
+        const opts: any = p || ps ? { page: p, pageSize: ps, filters, scope } : { filters, scope };
+        return this.formService.findAll(opts);
     }
 
     @Get('screenings')
-    findScreenings(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    async findScreenings(@Req() request: Request, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
         const p = page ? parseInt(page, 10) : undefined;
         const ps = pageSize ? parseInt(pageSize, 10) : undefined;
-        // formService.findScreenings will continue to work even if passed opts
-        return (this.formService as any).findScreenings ? (this.formService as any).findScreenings({ page: p, pageSize: ps }) : this.formService.findScreenings();
+        const scope = await this.gruposService.getScopeForUser((request as any).user);
+        return this.formService.findScreenings({ page: p, pageSize: ps, scope });
     }
 
     @Post()
     @UsePipes(new ValidationPipe({ whitelist: true }))
-    create(@Body() dto: SaveFormDto) {
-        return this.formService.create(dto);
+    create(@Body() dto: SaveFormDto, @Req() request: Request) {
+        const creatorId = ((request as any).user as any)?.idUser;
+        return this.formService.create(dto, creatorId);
     }
 
     @Get(':id')
@@ -207,7 +212,8 @@ export class FormController {
 
     @Get('/responses/list')
     @Menu('respostas')
-    findAllResponses(
+    async findAllResponses(
+        @Req() request: Request,
         @Query('page') page?: string,
         @Query('pageSize') pageSize?: string,
         @Query('formTitle') formTitle?: string,
@@ -239,7 +245,8 @@ export class FormController {
             if (!isNaN(v)) filters.scoreMax = v;
         }
 
-        return (this.formService as any).findAllResponses ? (this.formService as any).findAllResponses({ page: p, pageSize: ps, filters }) : this.formService.findAllResponses();
+        const scope = await this.gruposService.getScopeForUser((request as any).user);
+        return this.formService.findAllResponses({ page: p, pageSize: ps, filters, scope });
     }
 
     @Get('response/:responseId')

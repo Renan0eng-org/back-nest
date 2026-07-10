@@ -4,6 +4,7 @@ import { AuthService } from 'src/auth/auth.service';
 import { Menu } from 'src/auth/menu.decorator';
 import { Public } from 'src/auth/public.decorator';
 import { RefreshTokenGuard } from 'src/auth/refresh-token.guard';
+import { GruposService } from 'src/grupos/grupos.service';
 import { RegisterPatientDto } from './dto/register-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 import { PatientsService } from './patients.service';
@@ -17,10 +18,12 @@ export class PatientsController {
         private readonly patientsService: PatientsService,
         private readonly publicPatientService: PublicPatientService,
         private readonly authService: AuthService,
+        private readonly gruposService: GruposService,
     ) { }
 
     @Get()
-    findAll(
+    async findAll(
+        @Req() request: Request,
         @Query('page') page?: string,
         @Query('pageSize') pageSize?: string,
         @Query('name') name?: string,
@@ -64,7 +67,8 @@ export class PatientsController {
             else if (alta === 'false') filters.alta = false;
         }
 
-        return this.patientsService.findAll(p || ps ? { page: p, pageSize: ps, filters } : { filters } as any);
+        const scope = await this.gruposService.getScopeForUser((request as any).user);
+        return this.patientsService.findAll(p || ps ? { page: p, pageSize: ps, filters, scope } : { filters, scope } as any);
     }
 
     @Get(':id')
@@ -74,7 +78,8 @@ export class PatientsController {
 
     @Post()
     @UsePipes(new ValidationPipe({ whitelist: true }))
-    create(@Body() dto: RegisterPatientDto) {
+    create(@Body() dto: RegisterPatientDto, @Req() request: Request) {
+        const creatorId = ((request as any).user as any)?.idUser;
         const createData: any = {
             email: dto.email,
             password: dto.password,
@@ -89,7 +94,7 @@ export class PatientsController {
         if (dto.examesDetalhes) createData.examesDetalhes = dto.examesDetalhes;
         if (dto.alergias) createData.alergias = dto.alergias;
 
-        return this.patientsService.create(createData);
+        return this.patientsService.create(createData, creatorId);
     }
 
     @Post('public')

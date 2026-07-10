@@ -140,10 +140,28 @@ export class FormService {
         return { success: true };
     }
 
-    async findAll(opts?: { page?: number; pageSize?: number; filters?: any }) {
+    /**
+     * Monta a cláusula de escopo por grupo. Um formulário é visível se:
+     *  - não tem dono nem grupo (legado, visível a todos), ou
+     *  - foi criado por um usuário visível ao usuário atual, ou
+     *  - pertence a um grupo do qual o usuário atual é membro.
+     */
+    private buildScopeWhere(scope?: { visibleUserIds: string[]; groupIds: number[] } | null) {
+        if (!scope) return {};
+        const or: any[] = [
+            { AND: [{ createdById: null }, { grupoId: null }] },
+            { createdById: { in: scope.visibleUserIds } },
+        ];
+        if (scope.groupIds.length) {
+            or.push({ grupoId: { in: scope.groupIds } });
+        }
+        return { OR: or };
+    }
+
+    async findAll(opts?: { page?: number; pageSize?: number; filters?: any; scope?: { visibleUserIds: string[]; groupIds: number[] } | null }) {
         const filters = opts?.filters;
 
-        const where: any = { active: true };
+        const where: any = { active: true, ...this.buildScopeWhere(opts?.scope) };
 
         if (filters) {
             if (filters.title) {
@@ -309,8 +327,8 @@ export class FormService {
         return { total, page, pageSize, data };
     }
 
-    async findScreenings(opts?: { page?: number; pageSize?: number }) {
-        const where: any = { active: true, isScreening: true };
+    async findScreenings(opts?: { page?: number; pageSize?: number; scope?: { visibleUserIds: string[]; groupIds: number[] } | null }) {
+        const where: any = { active: true, isScreening: true, ...this.buildScopeWhere(opts?.scope) };
 
         if (!opts || (typeof opts.page === 'undefined' && typeof opts.pageSize === 'undefined')) {
             const formsWithCount = await this.prisma.form.findMany({
@@ -393,7 +411,7 @@ export class FormService {
         return form;
     }
 
-    async create(dto: SaveFormDto) {
+    async create(dto: SaveFormDto, createdById?: string) {
         const { title, description, questions, scoreRules } = dto;
 
         if (scoreRules && scoreRules.length > 0) {
@@ -404,6 +422,7 @@ export class FormService {
             data: {
                 title,
                 description,
+                createdById: createdById || null,
                 questions: {
                     create: questions.map((q, qIndex) => ({
                         text: q.text,
@@ -998,9 +1017,9 @@ export class FormService {
     }
 
 
-    async findAllResponses(opts?: { page?: number; pageSize?: number; filters?: any }) {
+    async findAllResponses(opts?: { page?: number; pageSize?: number; filters?: any; scope?: { visibleUserIds: string[]; groupIds: number[] } | null }) {
         const filters = opts?.filters;
-        const baseWhere: any = { form: { active: true } };
+        const baseWhere: any = { form: { active: true, ...this.buildScopeWhere(opts?.scope) } };
 
         // Apply filters to the where clause
         if (filters) {

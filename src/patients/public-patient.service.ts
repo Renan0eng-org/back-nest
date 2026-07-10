@@ -38,6 +38,12 @@ export class PublicPatientService {
     const hashedPassword = await this.authService.cryptPassword(dto.password);
     const cpfStored = `${dto.cpf}_AUTO_CADASTRO_${Date.now()}`;
 
+    // Pacientes cadastrados pelo app entram no grupo padrão do sistema
+    const grupoPadrao = await this.prisma.grupo.findFirst({
+      where: { isDefault: true },
+      select: { idGrupo: true },
+    });
+
     const data: any = {
       email: dto.email,
       password: hashedPassword,
@@ -53,6 +59,7 @@ export class PublicPatientService {
       type: 'PACIENTE',
       active: false,
       autoCadastro: true,
+      ...(grupoPadrao && { grupoPacienteId: grupoPadrao.idGrupo }),
     };
 
     try {

@@ -39,9 +39,23 @@ const patientSelect = Prisma.validator<Prisma.UserSelect>()({
 export class PatientsService {
     constructor(private prisma: PrismaService, private authService: AuthService) { }
 
-    async findAll(opts?: { page?: number; pageSize?: number; filters?: any }) {
+    async findAll(opts?: { page?: number; pageSize?: number; filters?: any; scope?: { visibleUserIds: string[]; groupIds: number[] } | null }) {
         const filters = opts?.filters;
         const where: any = { type: 'PACIENTE', dt_delete: null };
+
+        // Escopo por grupo. Paciente visível se:
+        //  - não tem criador nem grupo (legado, visível a todos), ou
+        //  - foi criado por usuário visível, ou
+        //  - pertence a um grupo do qual o usuário atual é membro.
+        if (opts?.scope) {
+            where.OR = [
+                { AND: [{ user_id_create: null }, { grupoPacienteId: null }] },
+                { user_id_create: { in: opts.scope.visibleUserIds } },
+            ];
+            if (opts.scope.groupIds.length) {
+                where.OR.push({ grupoPacienteId: { in: opts.scope.groupIds } });
+            }
+        }
 
         if (filters?.name) {
             where.name = { contains: filters.name, mode: 'insensitive' };
@@ -204,12 +218,13 @@ export class PatientsService {
         return user;
     }
 
-    async create(data: RegisterPatientDto) {
+    async create(data: RegisterPatientDto, creatorId?: string) {
         try {
             const createData = {
                 ...(data as any),
                 password: await this.authService.cryptPassword((data as any).password),
                 type: 'PACIENTE',
+                ...(creatorId && { user_id_create: creatorId }),
             } as any;
 
             // busca pelo cpf e retorna falando se ja existe um usuario com esse cpf

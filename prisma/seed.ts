@@ -23,6 +23,7 @@ const MENUS = [
   { nome: 'Dash Professional Paciente', slug: 'dash-professional-paciente' },
   { nome: 'Notifications', slug: 'notifications' },
   { nome: 'Boas Vindas', slug: 'boas-vindas' },
+  { nome: 'Grupos', slug: 'grupos' },
 ];
 
 const NIVEIS = [
@@ -49,6 +50,7 @@ const NIVEL_SLUGS: Record<number, string[]> = {
     'esteira-pacientes',
     'acesso',
     'boas-vindas',
+    'grupos',
   ],
   4: [ // Equipe
     'dash-professional',
@@ -178,13 +180,48 @@ async function seedAdminUser() {
   console.log('  Admin user ok');
 }
 
-async function seedTriagemForm() {
+const DEFAULT_GRUPO_NOME = 'Grupo Padrão';
+
+async function seedGrupoPadrao(): Promise<number> {
+  console.log('Seeding grupo padrão...');
+
+  let grupo = await prisma.grupo.findFirst({ where: { isDefault: true } });
+  if (!grupo) {
+    grupo = await prisma.grupo.create({
+      data: {
+        nome: DEFAULT_GRUPO_NOME,
+        descricao: 'Grupo padrão do sistema. Pacientes cadastrados pelo app e o formulário de triagem entram automaticamente aqui.',
+        isDefault: true,
+      },
+    });
+    console.log(`  Grupo padrão criado (id ${grupo.idGrupo})`);
+  } else {
+    console.log(`  Grupo padrão já existe (id ${grupo.idGrupo})`);
+  }
+  return grupo.idGrupo;
+}
+
+async function migrarPacientesAppParaGrupoPadrao(grupoId: number) {
+  console.log('Migrando pacientes de auto-cadastro para o grupo padrão...');
+  const result = await prisma.user.updateMany({
+    where: { type: 'PACIENTE', autoCadastro: true, grupoPacienteId: null },
+    data: { grupoPacienteId: grupoId },
+  });
+  console.log(`  ${result.count} pacientes movidos para o grupo padrão`);
+}
+
+async function seedTriagemForm(grupoId: number) {
   console.log('Seeding triagem form...');
 
   const formId = '7f9e8d4a-c1b2-4a3f-9e8c-5b2d1f0e9c8a';
   const existing = await prisma.form.findUnique({ where: { idForm: formId } });
   if (existing) {
-    console.log('  Form already exists, skipping');
+    if (existing.grupoId !== grupoId) {
+      await prisma.form.update({ where: { idForm: formId }, data: { grupoId } });
+      console.log('  Form já existe — vinculado ao grupo padrão');
+    } else {
+      console.log('  Form already exists, skipping');
+    }
     return;
   }
 
@@ -195,6 +232,7 @@ async function seedTriagemForm() {
       description: 'Avaliação completa do histórico, tratamento e impacto funcional da dor crônica do paciente, com pontuação para estratificação de risco.',
       active: true,
       isScreening: true,
+      grupoId,
       createdAt: new Date('2025-12-08T03:00:00.000Z'),
       updatedAt: new Date('2025-12-08T03:00:00.000Z'),
       questions: {
@@ -382,7 +420,9 @@ async function main() {
   await seedNiveis();
   await seedPermissoes();
   await seedAdminUser();
-  await seedTriagemForm();
+  const grupoPadraoId = await seedGrupoPadrao();
+  await seedTriagemForm(grupoPadraoId);
+  await migrarPacientesAppParaGrupoPadrao(grupoPadraoId);
 
   console.log('\nSeed completed!');
 }

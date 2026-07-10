@@ -8,6 +8,7 @@ import { ChatModule } from './chat/chat.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { DatabaseModule } from './database/database.module';
 import { FormModule } from './forms/form.module';
+import { GruposModule } from './grupos/grupos.module';
 import { LogsModule } from './logs/logs.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PatientsModule } from './patients/patients.module';
@@ -15,7 +16,7 @@ import { PushModule } from './push/push.module';
 import { UserModule } from './user/user.module';
 
 @Module({
-  imports: [AuthModule, DatabaseModule, FormModule, AcessoModule, UserModule, AppointmentsModule, AttendancesModule, PatientsModule, LogsModule, NotificationsModule, PushModule, AdminDashboardModule, ChatModule],
+  imports: [AuthModule, DatabaseModule, FormModule, AcessoModule, UserModule, AppointmentsModule, AttendancesModule, PatientsModule, LogsModule, NotificationsModule, PushModule, AdminDashboardModule, ChatModule, GruposModule],
   providers: [AllExceptionsFilter],
 })
 export class AppModule {}

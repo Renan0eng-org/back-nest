@@ -23,7 +23,7 @@ export class MailService {
   }
 
   async sendPasswordReset(to: string, name: string, token: string) {
-    const frontendUrl = process.env.CORS || 'https://prefeitura.renannardi.com';
+    const frontendUrl = (process.env.CORS || 'https://prefeitura.renannardi.com').split(',')[0].trim();
     const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
 
     this.logger.log(`Enviando email de recuperação para ${to}...`);
@@ -70,7 +70,7 @@ export class MailService {
   }
 
   async sendWelcome(to: string, name: string, token: string) {
-    const frontendUrl = process.env.CORS || 'https://prefeitura.renannardi.com';
+    const frontendUrl = (process.env.CORS || 'https://prefeitura.renannardi.com').split(',')[0].trim();
     const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
 
     this.logger.log(`Enviando email de boas-vindas para ${to}...`);
@@ -114,6 +114,53 @@ export class MailService {
       this.logger.log(`Email de boas-vindas enviado com sucesso! messageId=${info.messageId}`);
     } catch (err) {
       this.logger.error(`Falha ao enviar email de boas-vindas para ${to}: ${err.message}`);
+      this.logger.error(err.stack);
+      throw err;
+    }
+  }
+
+  async sendEmailVerification(to: string, name: string, token: string) {
+    const frontendUrl = (process.env.CORS || 'https://prefeitura.renannardi.com').split(',')[0].trim();
+    const verifyUrl = `${frontendUrl}/auth/verify-email?token=${token}`;
+
+    this.logger.log(`Enviando email de verificação para ${to}...`);
+
+    try {
+      const info = await this.transporter.sendMail({
+        from: `"PVAI Sem Dor" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+        to,
+        subject: 'Confirme seu e-mail - PVAI Sem Dor',
+        html: `
+          <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
+            <div style="background: linear-gradient(135deg, #23518C, #306EBF); padding: 32px 24px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">PVAI SEM DOR</h1>
+              <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Sistema de Saúde de Paranavaí</p>
+            </div>
+            <div style="padding: 32px 24px;">
+              <p style="color: #1a1a1a; font-size: 16px; margin: 0 0 16px;">Olá, <strong>${name}</strong>!</p>
+              <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0 0 24px;">
+                Obrigado por se cadastrar no <strong>PVAI Sem Dor</strong>. Para confirmar que este e-mail pertence a você, clique no botão abaixo:
+              </p>
+              <div style="text-align: center; margin: 0 0 24px;">
+                <a href="${verifyUrl}" style="display: inline-block; background: #23518C; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                  Confirmar meu e-mail
+                </a>
+              </div>
+              <p style="color: #9ca3af; font-size: 12px; line-height: 1.5; margin: 0 0 16px;">
+                Este link expira em <strong>24 horas</strong>. Se você não criou uma conta, ignore este e-mail.
+              </p>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+              <p style="color: #9ca3af; font-size: 11px; margin: 0; text-align: center;">
+                Prefeitura de Paranavaí &bull; UNIPAR
+              </p>
+            </div>
+          </div>
+        `,
+      });
+
+      this.logger.log(`Email de verificação enviado com sucesso! messageId=${info.messageId}`);
+    } catch (err) {
+      this.logger.error(`Falha ao enviar email de verificação para ${to}: ${err.message}`);
       this.logger.error(err.stack);
       throw err;
     }

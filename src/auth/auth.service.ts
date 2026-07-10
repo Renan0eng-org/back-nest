@@ -372,6 +372,49 @@ export class AuthService {
         return { message: 'Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha.' };
     }
 
+    async sendVerificationEmail(userId: string) {
+        const user = await this.prisma.user.findUnique({ where: { idUser: userId } });
+        if (!user) throw new BadRequestException('Usuário não encontrado.');
+        if (user.emailVerified) return { message: 'E-mail já verificado.' };
+
+        await this.prisma.emailVerificationToken.updateMany({
+            where: { userId: user.idUser, usedAt: null },
+            data: { usedAt: new Date() },
+        });
+
+        const token = randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        await this.prisma.emailVerificationToken.create({
+            data: { token, userId: user.idUser, expiresAt },
+        });
+
+        await this.mailService.sendEmailVerification(user.email, user.name, token);
+
+        return { message: 'E-mail de verificação enviado.' };
+    }
+
+    async verifyEmail(token: string) {
+        const verificationToken = await this.prisma.emailVerificationToken.findUnique({ where: { token } });
+
+        if (!verificationToken) throw new BadRequestException('Token inválido.');
+        if (verificationToken.usedAt) throw new BadRequestException('Este link já foi utilizado.');
+        if (verificationToken.expiresAt < new Date()) throw new BadRequestException('Este link expirou. Solicite um novo e-mail de verificação.');
+
+        await this.prisma.$transaction([
+            this.prisma.user.update({
+                where: { idUser: verificationToken.userId },
+                data: { emailVerified: true, emailVerifiedAt: new Date() },
+            }),
+            this.prisma.emailVerificationToken.update({
+                where: { id: verificationToken.id },
+                data: { usedAt: new Date() },
+            }),
+        ]);
+
+        return { message: 'E-mail verificado com sucesso.' };
+    }
+
     async sendWelcomeEmail(userId: string) {
         const user = await this.prisma.user.findUnique({ where: { idUser: userId } });
         if (!user) throw new BadRequestException('Usuário não encontrado.');
@@ -405,7 +448,8 @@ export class AuthService {
         await this.prisma.$transaction([
             this.prisma.user.update({
                 where: { idUser: resetToken.userId },
-                data: { password: hashed },
+                // Receber o link por e-mail comprova a posse do e-mail
+                data: { password: hashed, emailVerified: true, emailVerifiedAt: new Date() },
             }),
             this.prisma.passwordResetToken.update({
                 where: { id: resetToken.id },
