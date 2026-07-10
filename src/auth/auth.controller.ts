@@ -5,6 +5,33 @@ import { AuthService } from './auth.service';
 import { LoginUserDto } from './dto/login-user.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
 
+function cookieOptions(): { httpOnly: boolean; secure: boolean; sameSite: 'lax'; path: string; maxAge: number; domain?: string } {
+    const opts: any = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    };
+    if (process.env.COOKIE_DOMAIN) {
+        opts.domain = process.env.COOKIE_DOMAIN;
+    }
+    return opts;
+}
+
+function clearCookieOptions(): { httpOnly: boolean; secure: boolean; sameSite: 'lax'; path: string; domain?: string } {
+    const opts: any = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+    };
+    if (process.env.COOKIE_DOMAIN) {
+        opts.domain = process.env.COOKIE_DOMAIN;
+    }
+    return opts;
+}
+
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
@@ -55,13 +82,7 @@ export class AuthController {
             email: user.email,
         });
 
-        response.cookie('refresh_token', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            path: '/',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        response.cookie('refresh_token', refreshToken, cookieOptions());
 
         return {
             accessToken,
@@ -71,12 +92,7 @@ export class AuthController {
 
     @Post('logout-web')
     async logout(@Res({ passthrough: true }) response: Response) {
-        response.clearCookie('refresh_token', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            path: '/',
-        });
+        response.clearCookie('refresh_token', clearCookieOptions());
 
         return { message: 'Logout realizado com sucesso' };
     }
@@ -94,23 +110,12 @@ export class AuthController {
 
             const { accessToken, refreshToken } = await this.authService.refreshToken(token);
 
-            response.cookie('refresh_token', refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                path: '/',
-                maxAge: 7 * 24 * 60 * 60 * 1000,
-            });
+            response.cookie('refresh_token', refreshToken, cookieOptions());
 
             return { accessToken };
 
         } catch (err) {
-            response.clearCookie('refresh_token', {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                path: '/',
-            });
+            response.clearCookie('refresh_token', clearCookieOptions());
             if (err instanceof UnauthorizedException) {
                 throw err;
             }
