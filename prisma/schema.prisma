@@ -89,6 +89,16 @@ model User {
   grupoPacienteId Int?
   grupoPaciente   Grupo? @relation("GrupoPacientes", fields: [grupoPacienteId], references: [idGrupo])
 
+  // Módulo hospitalar — dados de médico (quando type = MEDICO)
+  crm           String?
+  especialidade String?
+  cargaHoraria  Int?
+  medicoStatus  DoctorStatus?
+
+  plantoes            Plantao[]     @relation("PlantaoDoctor")
+  queueTicketsPatient QueueTicket[] @relation("QueuePatient")
+  queueTicketsDoctor  QueueTicket[] @relation("QueueDoctor")
+
   @@index([idUser])
   @@index([user_id_create])
   @@index([user_id_update])
@@ -562,6 +572,11 @@ model Grupo {
   pacientes   User[]         @relation("GrupoPacientes")
   formularios Form[]         @relation("GrupoFormularios")
 
+  // Módulo hospitalar
+  plantoes     Plantao[]     @relation("PlantaoGrupo")
+  queueTickets QueueTicket[] @relation("QueueGrupo")
+  supplies     Supply[]      @relation("SupplyGrupo")
+
   @@index([createdById])
   @@index([isDefault])
 }
@@ -683,5 +698,130 @@ model ChatLog {
   @@index([userId])
   @@index([type])
   @@index([triggerName])
+  @@index([createdAt])
+}
+
+// ============================================================
+// Módulo de Gestão Hospitalar (Grupo = Hospital)
+// ============================================================
+
+enum DoctorStatus {
+  Ativo
+  Afastado
+  Ferias
+  Inativo
+}
+
+enum PlantaoStatus {
+  Aberto // disponível no mercado — qualquer médico do grupo pode pegar
+  Agendado // atribuído a um médico
+  EmAndamento
+  Concluido
+  Cancelado
+}
+
+/// Turno de plantão em um setor. Pode estar "Aberto" (sem médico) para um
+/// médico do grupo pegar, ou atribuído a um médico (User com type = MEDICO).
+model Plantao {
+  id         String        @id @default(cuid())
+  doctorId   String?
+  grupoId    Int?
+  setor      String
+  startsAt   DateTime
+  endsAt     DateTime
+  status     PlantaoStatus @default(Aberto)
+  checkinAt  DateTime?
+  checkoutAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  doctor User?  @relation("PlantaoDoctor", fields: [doctorId], references: [idUser], onDelete: SetNull)
+  grupo  Grupo? @relation("PlantaoGrupo", fields: [grupoId], references: [idGrupo])
+
+  @@index([doctorId])
+  @@index([grupoId])
+  @@index([startsAt])
+  @@index([status])
+}
+
+enum QueuePriority {
+  Normal
+  Preferencial
+  Urgencia
+}
+
+enum QueueStatus {
+  Aguardando
+  Chamado
+  EmAtendimento
+  Concluido
+  Cancelado
+  Faltou
+}
+
+/// Senha/ticket da fila de atendimento.
+model QueueTicket {
+  id          String        @id @default(cuid())
+  grupoId     Int?
+  code        String // ex: A-102
+  patientId   String?
+  patientName String? // fallback quando não há cadastro
+  setor       String
+  priority    QueuePriority @default(Normal)
+  status      QueueStatus   @default(Aguardando)
+  doctorId    String? // User id do médico que assumiu
+  issuedAt    DateTime      @default(now())
+  calledAt    DateTime?
+  confirmedAt DateTime?
+  closedAt    DateTime?
+
+  patient User?  @relation("QueuePatient", fields: [patientId], references: [idUser])
+  doctor  User?  @relation("QueueDoctor", fields: [doctorId], references: [idUser])
+  grupo   Grupo? @relation("QueueGrupo", fields: [grupoId], references: [idGrupo])
+
+  @@index([grupoId])
+  @@index([status])
+  @@index([issuedAt])
+}
+
+/// Insumo de estoque hospitalar.
+model Supply {
+  id        String    @id @default(cuid())
+  grupoId   Int?
+  name      String
+  unit      String // un, cx, L...
+  balance   Int       @default(0)
+  minStock  Int       @default(0)
+  lot       String?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  grupo     Grupo?           @relation("SupplyGrupo", fields: [grupoId], references: [idGrupo])
+  movements SupplyMovement[]
+
+  @@index([grupoId])
+}
+
+enum SupplyMovementType {
+  Entrada
+  Saida
+}
+
+/// Movimentação de estoque (entrada/saída).
+model SupplyMovement {
+  id           String             @id @default(cuid())
+  supplyId     String
+  type         SupplyMovementType
+  quantity     Int
+  reason       String?
+  attendanceId String?
+  userId       String?
+  createdAt    DateTime           @default(now())
+
+  supply Supply @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+
+  @@index([supplyId])
+  @@index([type])
   @@index([createdAt])
 }

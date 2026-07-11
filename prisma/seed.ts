@@ -24,6 +24,11 @@ const MENUS = [
   { nome: 'Notifications', slug: 'notifications' },
   { nome: 'Boas Vindas', slug: 'boas-vindas' },
   { nome: 'Grupos', slug: 'grupos' },
+  // Módulo hospitalar
+  { nome: 'Médicos', slug: 'medicos' },
+  { nome: 'Escala de Plantão', slug: 'escala' },
+  { nome: 'Fila de Atendimento', slug: 'fila' },
+  { nome: 'Estoque de Insumos', slug: 'estoque' },
 ];
 
 const NIVEIS = [
@@ -51,6 +56,10 @@ const NIVEL_SLUGS: Record<number, string[]> = {
     'acesso',
     'boas-vindas',
     'grupos',
+    'medicos',
+    'escala',
+    'fila',
+    'estoque',
   ],
   4: [ // Equipe
     'dash-professional',
@@ -72,6 +81,8 @@ const NIVEL_SLUGS: Record<number, string[]> = {
     'paciente',
     'agendamento',
     'esteira-pacientes',
+    'escala',
+    'fila',
   ],
 };
 

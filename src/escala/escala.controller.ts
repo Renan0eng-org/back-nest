@@ -1,0 +1,66 @@
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Request } from 'express';
+import { Menu } from 'src/auth/menu.decorator';
+import { RefreshTokenGuard } from 'src/auth/refresh-token.guard';
+import { CreatePlantaoDto, UpdatePlantaoDto } from './dto/plantao.dto';
+import { EscalaService } from './escala.service';
+
+@Controller('admin/escala')
+@UseGuards(RefreshTokenGuard)
+@Menu('escala')
+export class EscalaController {
+    constructor(private readonly escalaService: EscalaService) { }
+
+    @Get()
+    findAll(
+        @Query('from') from?: string,
+        @Query('to') to?: string,
+        @Query('setor') setor?: string,
+        @Query('grupoId') grupoId?: string,
+    ) {
+        return this.escalaService.findAll({ from, to, setor, grupoId: grupoId ? Number(grupoId) : undefined });
+    }
+
+    @Get(':id')
+    findOne(@Param('id') id: string) {
+        return this.escalaService.findOne(id);
+    }
+
+    @Post()
+    @UsePipes(new ValidationPipe({ whitelist: true }))
+    create(@Body() dto: CreatePlantaoDto) {
+        return this.escalaService.create(dto);
+    }
+
+    @Put(':id')
+    @UsePipes(new ValidationPipe({ whitelist: true }))
+    update(@Param('id') id: string, @Body() dto: UpdatePlantaoDto) {
+        return this.escalaService.update(id, dto);
+    }
+
+    @Delete(':id')
+    remove(@Param('id') id: string) {
+        return this.escalaService.remove(id);
+    }
+
+    @Post(':id/pegar')
+    pegar(@Param('id') id: string, @Req() req: Request) {
+        const userId = (req.user as any)?.idUser;
+        return this.escalaService.pegar(id, userId);
+    }
+
+    @Post(':id/liberar')
+    liberar(@Param('id') id: string) {
+        return this.escalaService.liberar(id);
+    }
+
+    @Post(':id/checkin')
+    checkin(@Param('id') id: string) {
+        return this.escalaService.checkin(id);
+    }
+
+    @Post(':id/checkout')
+    checkout(@Param('id') id: string) {
+        return this.escalaService.checkout(id);
+    }
+}

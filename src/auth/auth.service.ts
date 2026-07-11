@@ -292,7 +292,7 @@ export class AuthService {
         return rest;
     }
 
-    async updateProfile(userId: string, data: { name?: string; email?: string; phone?: string; cep?: string; cpf?: string }) {
+    async updateProfile(userId: string, data: { name?: string; email?: string; phone?: string; cep?: string; cpf?: string; crm?: string; especialidade?: string; cargaHoraria?: number }) {
         const user = await this.prisma.user.findUnique({ where: { idUser: userId } });
         if (!user) throw new UnauthorizedException('Usuário não encontrado');
 
@@ -312,6 +312,13 @@ export class AuthService {
         if (typeof data.phone !== 'undefined') updateData.phone = data.phone;
         if (typeof data.cep !== 'undefined') updateData.cep = data.cep;
         if (typeof data.cpf !== 'undefined') updateData.cpf = data.cpf;
+
+        // Campos de médico — só aplicam quando o próprio usuário é MEDICO
+        if (user.type === 'MEDICO') {
+            if (typeof data.crm !== 'undefined') updateData.crm = data.crm;
+            if (typeof data.especialidade !== 'undefined') updateData.especialidade = data.especialidade;
+            if (typeof data.cargaHoraria !== 'undefined') updateData.cargaHoraria = data.cargaHoraria;
+        }
 
         const updated = await this.prisma.user.update({
             where: { idUser: userId },

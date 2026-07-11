@@ -153,7 +153,7 @@ export class AuthController {
     @Patch('profile')
     async updateProfile(
         @Req() request: Request,
-        @Body() data: { name?: string; email?: string; phone?: string; cep?: string; cpf?: string },
+        @Body() data: { name?: string; email?: string; phone?: string; cep?: string; cpf?: string; crm?: string; especialidade?: string; cargaHoraria?: number },
     ) {
         const token = request.cookies['refresh_token'];
         if (!token) throw new UnauthorizedException('Token não fornecido');
