@@ -41,7 +41,7 @@ export class PatientsService {
 
     async findAll(opts?: { page?: number; pageSize?: number; filters?: any; scope?: { visibleUserIds: string[]; groupIds: number[] } | null }) {
         const filters = opts?.filters;
-        const where: any = { type: 'PACIENTE', dt_delete: null };
+        const where: any = { type: 'PACIENTE', dt_delete: filters?.deleted ? { not: null } : null };
 
         // Escopo por grupo. Paciente visível se:
         //  - não tem criador nem grupo (legado, visível a todos), ou
@@ -284,12 +284,22 @@ export class PatientsService {
 
     async remove(id: string, idUser: string) {
         try {
-            // pega o usuario para colocar o cpf com sufixo _delete_deteTedTimestamp
-            const user = await this.prisma.user.findUnique({ where: { idUser: id }, select: { cpf: true } });
+            // pega o usuario para liberar os campos únicos (cpf e email) com sufixo,
+            // permitindo recadastrar o mesmo cpf/email depois da exclusão
+            const user = await this.prisma.user.findUnique({ where: { idUser: id }, select: { cpf: true, email: true } });
             if (!user) throw new NotFoundException('Paciente não encontrado');
-            const cpf = `${user.cpf}_delete_${Date.now()}`;
+            const suffix = `_delete_${Date.now()}`;
 
-            await this.prisma.user.update({ where: { idUser: id }, data: { user_id_delete: idUser, dt_delete: new Date(), cpf: cpf } });
+            await this.prisma.user.update({
+                where: { idUser: id },
+                data: {
+                    user_id_delete: idUser,
+                    dt_delete: new Date(),
+                    active: false,
+                    cpf: `${user.cpf}${suffix}`,
+                    email: `${user.email}${suffix}`,
+                },
+            });
 
             // cansela os agendamentos futuros do paciente
             await this.prisma.appointment.updateMany({
@@ -305,6 +315,29 @@ export class PatientsService {
         } catch (e) {
             throw new BadRequestException('Não foi possível deletar paciente');
         }
+    }
+
+    /** Restaura um paciente soft-deletado, devolvendo email/cpf originais. */
+    async restore(id: string) {
+        const user = await this.prisma.user.findFirst({
+            where: { idUser: id, type: 'PACIENTE', dt_delete: { not: null } },
+            select: { email: true, cpf: true },
+        });
+        if (!user) throw new NotFoundException('Paciente excluído não encontrado');
+
+        const email = user.email.replace(/_del(?:ete)?_[a-z0-9]+$/i, '');
+        const cpf = user.cpf.replace(/_del(?:ete)?_[a-z0-9]+$/i, '');
+        const clash = await this.prisma.user.findFirst({
+            where: { dt_delete: null, OR: [{ email }, { cpf }] },
+            select: { idUser: true },
+        });
+        if (clash) throw new BadRequestException('Já existe um usuário ativo com este e-mail ou CPF.');
+
+        await this.prisma.user.update({
+            where: { idUser: id },
+            data: { dt_delete: null, active: true, email, cpf },
+        });
+        return { success: true, message: 'Paciente restaurado.' };
     }
 
     async acceptRegistration(id: string) {

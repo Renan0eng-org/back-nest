@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Menu } from 'src/auth/menu.decorator';
 import { RefreshTokenGuard } from 'src/auth/refresh-token.guard';
 import { CreateMedicoDto, UpdateMedicoDto } from './dto/medico.dto';
@@ -11,8 +11,8 @@ export class MedicosController {
     constructor(private readonly medicosService: MedicosService) { }
 
     @Get()
-    findAll() {
-        return this.medicosService.findAll();
+    findAll(@Query('deleted') deleted?: string) {
+        return this.medicosService.findAll(deleted === 'true');
     }
 
     @Get(':id')
@@ -35,5 +35,10 @@ export class MedicosController {
     @Delete(':id')
     remove(@Param('id') id: string) {
         return this.medicosService.remove(id);
+    }
+
+    @Post(':id/restaurar')
+    restore(@Param('id') id: string) {
+        return this.medicosService.restore(id);
     }
 }

@@ -14,17 +14,17 @@ function stockStatus(balance: number, minStock: number): 'OK' | 'Baixo' | 'Criti
 export class EstoqueService {
     constructor(private prisma: PrismaService) { }
 
-    async findAll(grupoId?: number) {
+    async findAll(grupoId?: number, deleted = false) {
         const supplies = await this.prisma.supply.findMany({
-            where: grupoId ? { grupoId } : undefined,
+            where: { deletedAt: deleted ? { not: null } : null, ...(grupoId ? { grupoId } : {}) },
             orderBy: { name: 'asc' },
         });
         return supplies.map((s) => ({ ...s, status: stockStatus(s.balance, s.minStock) }));
     }
 
     async findOne(id: string) {
-        const supply = await this.prisma.supply.findUnique({
-            where: { id },
+        const supply = await this.prisma.supply.findFirst({
+            where: { id, deletedAt: null },
             include: { movements: { orderBy: { createdAt: 'desc' }, take: 50 } },
         });
         if (!supply) throw new NotFoundException('Insumo não encontrado.');
@@ -59,15 +59,23 @@ export class EstoqueService {
         });
     }
 
+    /** Soft delete — mantém o histórico de movimentações. */
     async remove(id: string) {
         await this.findOne(id);
-        await this.prisma.supply.delete({ where: { id } });
+        await this.prisma.supply.update({ where: { id }, data: { deletedAt: new Date() } });
         return { message: 'Insumo removido.' };
+    }
+
+    async restore(id: string) {
+        const supply = await this.prisma.supply.findFirst({ where: { id, deletedAt: { not: null } } });
+        if (!supply) throw new NotFoundException('Insumo excluído não encontrado.');
+        await this.prisma.supply.update({ where: { id }, data: { deletedAt: null } });
+        return this.findOne(id);
     }
 
     /** Entrada/saída de estoque com ajuste de saldo transacional. */
     async movimentar(id: string, dto: MovimentacaoDto, userId?: string) {
-        const supply = await this.prisma.supply.findUnique({ where: { id } });
+        const supply = await this.prisma.supply.findFirst({ where: { id, deletedAt: null } });
         if (!supply) throw new NotFoundException('Insumo não encontrado.');
 
         const delta = dto.type === 'Entrada' ? dto.quantity : -dto.quantity;

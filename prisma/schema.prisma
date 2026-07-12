@@ -732,6 +732,7 @@ model Plantao {
   status     PlantaoStatus @default(Aberto)
   checkinAt  DateTime?
   checkoutAt DateTime?
+  deletedAt  DateTime?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
@@ -794,6 +795,7 @@ model Supply {
   minStock  Int       @default(0)
   lot       String?
   expiresAt DateTime?
+  deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 

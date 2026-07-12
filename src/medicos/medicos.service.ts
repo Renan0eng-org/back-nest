@@ -6,6 +6,11 @@ import { CreateMedicoDto, UpdateMedicoDto } from './dto/medico.dto';
 // Nível de acesso "Médico" (ver prisma/seed.ts)
 const NIVEL_MEDICO = 5;
 
+/** Remove o sufixo `_del_xxx` / `_delete_xxx` adicionado no soft delete. */
+export function stripDelSuffix(value: string): string {
+    return value.replace(/_del(?:ete)?_[a-z0-9]+$/i, '');
+}
+
 const medicoSelect = {
     idUser: true,
     name: true,
@@ -26,9 +31,9 @@ const medicoSelect = {
 export class MedicosService {
     constructor(private prisma: PrismaService, private auth: AuthService) { }
 
-    findAll() {
+    findAll(deleted = false) {
         return this.prisma.user.findMany({
-            where: { type: 'MEDICO', dt_delete: null },
+            where: { type: 'MEDICO', dt_delete: deleted ? { not: null } : null },
             select: medicoSelect,
             orderBy: { name: 'asc' },
         });
@@ -90,14 +95,48 @@ export class MedicosService {
         return this.findOne(id);
     }
 
-    /** "Remover" = desativar o médico (mantém o usuário e o histórico). */
+    /**
+     * Soft delete: marca dt_delete, desativa e "libera" os campos únicos
+     * (email/cpf) concatenando um sufixo com timestamp, para que um novo
+     * cadastro com o mesmo e-mail/CPF não colida com o registro excluído.
+     */
     async remove(id: string) {
-        await this.findOne(id);
+        const medico = await this.findOne(id);
+        const suffix = `_del_${Date.now().toString(36)}`;
         await this.prisma.user.update({
             where: { idUser: id },
-            data: { medicoStatus: 'Inativo', active: false },
+            data: {
+                medicoStatus: 'Inativo',
+                active: false,
+                dt_delete: new Date(),
+                email: `${medico.email}${suffix}`,
+                cpf: `${medico.cpf}${suffix}`,
+            },
         });
-        return { message: 'Médico desativado.' };
+        return { message: 'Médico removido.' };
+    }
+
+    /** Restaura um médico soft-deletado, devolvendo email/cpf originais. */
+    async restore(id: string) {
+        const medico = await this.prisma.user.findFirst({
+            where: { idUser: id, type: 'MEDICO', dt_delete: { not: null } },
+            select: { email: true, cpf: true },
+        });
+        if (!medico) throw new NotFoundException('Médico excluído não encontrado.');
+
+        const email = stripDelSuffix(medico.email);
+        const cpf = stripDelSuffix(medico.cpf);
+        const clash = await this.prisma.user.findFirst({
+            where: { dt_delete: null, OR: [{ email }, { cpf }] },
+            select: { idUser: true },
+        });
+        if (clash) throw new BadRequestException('Já existe um usuário ativo com este e-mail ou CPF.');
+
+        await this.prisma.user.update({
+            where: { idUser: id },
+            data: { dt_delete: null, active: true, medicoStatus: 'Ativo', email, cpf },
+        });
+        return this.findOne(id);
     }
 
     private async linkGrupo(userId: string, grupoId: number) {

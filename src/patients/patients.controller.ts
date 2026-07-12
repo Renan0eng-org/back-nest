@@ -39,6 +39,7 @@ export class PatientsController {
         @Query('alergias') alergias?: string,
         @Query('active') active?: string,
         @Query('alta') alta?: string,
+        @Query('deleted') deleted?: string,
     ) {
         const p = page ? parseInt(page, 10) : undefined;
         const ps = pageSize ? parseInt(pageSize, 10) : undefined;
@@ -66,6 +67,7 @@ export class PatientsController {
             if (alta === 'true') filters.alta = true;
             else if (alta === 'false') filters.alta = false;
         }
+        if (deleted === 'true') filters.deleted = true;
 
         const scope = await this.gruposService.getScopeForUser((request as any).user);
         return this.patientsService.findAll(p || ps ? { page: p, pageSize: ps, filters, scope } : { filters, scope } as any);
@@ -138,6 +140,11 @@ export class PatientsController {
         const deleterId = dataToken.sub || dataToken.idUser || dataToken.id;
 
         return this.patientsService.remove(id, deleterId);
+    }
+
+    @Post(':id/restaurar')
+    async restore(@Param('id') id: string) {
+        return this.patientsService.restore(id);
     }
 
     @Patch(':id/accept-registration')

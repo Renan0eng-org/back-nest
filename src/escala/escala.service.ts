@@ -10,9 +10,10 @@ const doctorInclude = {
 export class EscalaService {
     constructor(private prisma: PrismaService) { }
 
-    findAll(filter: { from?: string; to?: string; setor?: string; grupoId?: number }) {
+    findAll(filter: { from?: string; to?: string; setor?: string; grupoId?: number; deleted?: boolean }) {
         return this.prisma.plantao.findMany({
             where: {
+                deletedAt: filter.deleted ? { not: null } : null,
                 setor: filter.setor || undefined,
                 grupoId: filter.grupoId ?? undefined,
                 startsAt: filter.from ? { gte: new Date(filter.from) } : undefined,
@@ -24,7 +25,7 @@ export class EscalaService {
     }
 
     async findOne(id: string) {
-        const plantao = await this.prisma.plantao.findUnique({ where: { id }, include: doctorInclude });
+        const plantao = await this.prisma.plantao.findFirst({ where: { id, deletedAt: null }, include: doctorInclude });
         if (!plantao) throw new NotFoundException('Plantão não encontrado.');
         return plantao;
     }
@@ -112,10 +113,17 @@ export class EscalaService {
         });
     }
 
+    /** Soft delete. */
     async remove(id: string) {
         await this.findOne(id);
-        await this.prisma.plantao.delete({ where: { id } });
+        await this.prisma.plantao.update({ where: { id }, data: { deletedAt: new Date() } });
         return { message: 'Plantão removido.' };
+    }
+
+    async restore(id: string) {
+        const plantao = await this.prisma.plantao.findFirst({ where: { id, deletedAt: { not: null } } });
+        if (!plantao) throw new NotFoundException('Plantão excluído não encontrado.');
+        return this.prisma.plantao.update({ where: { id }, data: { deletedAt: null }, include: doctorInclude });
     }
 
     async checkin(id: string) {

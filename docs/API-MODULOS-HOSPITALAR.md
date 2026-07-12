@@ -83,8 +83,8 @@ Retorna o médico (por `idUser`) + últimos 20 plantões (`plantoes`).
 **Body** (todos opcionais): `name`, `phone`, `crm`, `especialidade`, `grupoId`, `cargaHoraria`, `status`.
 
 ### `DELETE /admin/medicos/:id`
-**Desativa** o médico (não apaga o usuário): `medicoStatus = Inativo`, `active = false`.
-**200** `{ "message": "Médico desativado." }`
+**Soft delete.** Marca `dt_delete`, `active = false`, `medicoStatus = Inativo` e **libera os campos únicos**: `email` e `cpf` recebem um sufixo `_del_<hash>` para que um novo cadastro com o mesmo e-mail/CPF não colida com o registro excluído. O médico some da listagem.
+**200** `{ "message": "Médico removido." }`
 
 ---
 

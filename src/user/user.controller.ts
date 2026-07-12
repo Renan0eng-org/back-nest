@@ -29,11 +29,13 @@ export class UserController {
         @Query('accessLevel') accessLevel?: string,
         @Query('type') type?: string,
         @Query('active') active?: string,
+        @Query('deleted') deleted?: string,
     ) {
         const p = page ? parseInt(page, 10) : undefined;
         const ps = pageSize ? parseInt(pageSize, 10) : undefined;
 
         const filters: any = {};
+        if (deleted === 'true') filters.deleted = true;
         if (name) filters.name = name;
         if (accessLevel) {
             const al = parseInt(accessLevel, 10);
@@ -67,6 +69,12 @@ export class UserController {
     @HttpCode(HttpStatus.NO_CONTENT)
     remove(@Param('id') id: string) {
         return this.userService.remove(id);
+    }
+
+    @Post(':id/restaurar')
+    @UseGuards(RefreshTokenGuard)
+    restore(@Param('id') id: string) {
+        return this.userService.restore(id);
     }
 
     @Post(':id/welcome')

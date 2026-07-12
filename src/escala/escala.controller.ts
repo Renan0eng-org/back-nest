@@ -17,8 +17,9 @@ export class EscalaController {
         @Query('to') to?: string,
         @Query('setor') setor?: string,
         @Query('grupoId') grupoId?: string,
+        @Query('deleted') deleted?: string,
     ) {
-        return this.escalaService.findAll({ from, to, setor, grupoId: grupoId ? Number(grupoId) : undefined });
+        return this.escalaService.findAll({ from, to, setor, grupoId: grupoId ? Number(grupoId) : undefined, deleted: deleted === 'true' });
     }
 
     @Get(':id')
@@ -41,6 +42,11 @@ export class EscalaController {
     @Delete(':id')
     remove(@Param('id') id: string) {
         return this.escalaService.remove(id);
+    }
+
+    @Post(':id/restaurar')
+    restore(@Param('id') id: string) {
+        return this.escalaService.restore(id);
     }
 
     @Post(':id/pegar')

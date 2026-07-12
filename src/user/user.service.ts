@@ -73,7 +73,7 @@ export class UserService {
 
     async findAll(opts?: { page?: number; pageSize?: number; filters?: any }) {
         const filters = opts?.filters;
-        const baseWhere: any = { dt_delete: null };
+        const baseWhere: any = { dt_delete: filters?.deleted ? { not: null } : null };
 
         // Filter by type
         if (filters?.type) {
@@ -195,13 +195,43 @@ export class UserService {
             throw new NotFoundException(`Usuário com ID ${idUser} não encontrado.`);
         }
 
-        // Adicionar lógica de soft delete se necessário (atualizar dt_delete)
-        // Ex: await this.prisma.user.update({ where: { idUser }, data: { dt_delete: new Date() } });
+        if (user.dt_delete) {
+            return { message: 'Usuário já removido.' };
+        }
 
-        // Deleção física:
-        await this.prisma.user.delete({
+        // Soft delete: mantém o registro/histórico, desativa o acesso e libera os
+        // campos únicos (email/cpf) com um sufixo, para permitir recadastro.
+        const suffix = `_del_${Date.now()}`;
+        await this.prisma.user.update({
             where: { idUser },
+            data: {
+                dt_delete: new Date(),
+                active: false,
+                email: `${user.email}${suffix}`,
+                cpf: `${user.cpf}${suffix}`,
+            },
         });
-        return { message: `Usuário ${idUser} deletado com sucesso.` }; // Retorna null ou uma mensagem
+        return { message: `Usuário removido com sucesso.` };
+    }
+
+    /** Restaura um usuário soft-deletado, devolvendo email/cpf originais. */
+    async restore(idUser: string) {
+        const user = await this.prisma.user.findFirst({ where: { idUser, dt_delete: { not: null } } });
+        if (!user) {
+            throw new NotFoundException('Usuário excluído não encontrado.');
+        }
+        const email = user.email.replace(/_del(?:ete)?_[a-z0-9]+$/i, '');
+        const cpf = user.cpf.replace(/_del(?:ete)?_[a-z0-9]+$/i, '');
+        const clash = await this.prisma.user.findFirst({
+            where: { dt_delete: null, OR: [{ email }, { cpf }] },
+            select: { idUser: true },
+        });
+        if (clash) throw new BadRequestException('Já existe um usuário ativo com este e-mail ou CPF.');
+
+        await this.prisma.user.update({
+            where: { idUser },
+            data: { dt_delete: null, active: true, email, cpf },
+        });
+        return { message: 'Usuário restaurado com sucesso.' };
     }
 }

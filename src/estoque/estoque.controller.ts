@@ -12,8 +12,8 @@ export class EstoqueController {
     constructor(private readonly estoqueService: EstoqueService) { }
 
     @Get()
-    findAll(@Query('grupoId') grupoId?: string) {
-        return this.estoqueService.findAll(grupoId ? Number(grupoId) : undefined);
+    findAll(@Query('grupoId') grupoId?: string, @Query('deleted') deleted?: string) {
+        return this.estoqueService.findAll(grupoId ? Number(grupoId) : undefined, deleted === 'true');
     }
 
     @Get(':id')
@@ -41,6 +41,11 @@ export class EstoqueController {
     @Delete(':id')
     remove(@Param('id') id: string) {
         return this.estoqueService.remove(id);
+    }
+
+    @Post(':id/restaurar')
+    restore(@Param('id') id: string) {
+        return this.estoqueService.restore(id);
     }
 
     @Post(':id/movimentar')
