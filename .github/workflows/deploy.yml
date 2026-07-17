@@ -58,6 +58,12 @@ jobs:
             --env-file /home/github/envs/back-prefeitura.env \
             devnardi/back-prefeitura:latest
 
+      - name: Wait container
+        run: sleep 10
+
+      - name: Run Prisma Seed
+        run: |
+          docker exec back-prefeitura npx prisma db seed
       # Limpeza
       - name: Prune unused images
         if: always()
