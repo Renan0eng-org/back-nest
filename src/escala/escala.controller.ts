@@ -28,23 +28,27 @@ export class EscalaController {
     }
 
     @Post()
+    @Menu('escala-admin')
     @UsePipes(new ValidationPipe({ whitelist: true }))
     create(@Body() dto: CreatePlantaoDto) {
         return this.escalaService.create(dto);
     }
 
     @Put(':id')
+    @Menu('escala-admin')
     @UsePipes(new ValidationPipe({ whitelist: true }))
     update(@Param('id') id: string, @Body() dto: UpdatePlantaoDto) {
         return this.escalaService.update(id, dto);
     }
 
     @Delete(':id')
+    @Menu('escala-admin')
     remove(@Param('id') id: string) {
         return this.escalaService.remove(id);
     }
 
     @Post(':id/restaurar')
+    @Menu('escala-admin')
     restore(@Param('id') id: string) {
         return this.escalaService.restore(id);
     }
@@ -56,17 +60,17 @@ export class EscalaController {
     }
 
     @Post(':id/liberar')
-    liberar(@Param('id') id: string) {
-        return this.escalaService.liberar(id);
+    liberar(@Param('id') id: string, @Req() req: Request) {
+        return this.escalaService.liberar(id, req.user);
     }
 
     @Post(':id/checkin')
-    checkin(@Param('id') id: string) {
-        return this.escalaService.checkin(id);
+    checkin(@Param('id') id: string, @Req() req: Request) {
+        return this.escalaService.checkin(id, req.user);
     }
 
     @Post(':id/checkout')
-    checkout(@Param('id') id: string) {
-        return this.escalaService.checkout(id);
+    checkout(@Param('id') id: string, @Req() req: Request) {
+        return this.escalaService.checkout(id, req.user);
     }
 }

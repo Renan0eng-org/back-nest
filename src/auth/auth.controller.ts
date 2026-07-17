@@ -36,6 +36,12 @@ function clearCookieOptions(): { httpOnly: boolean; secure: boolean; sameSite: '
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
 
+    @Get('grupos')
+    @Public()
+    async grupos() {
+        return this.authService.findAllGrupos();
+    }
+
     @Post('register')
     @Public()
     async register(@Body() data: RegisterUserDto) {
@@ -153,7 +159,7 @@ export class AuthController {
     @Patch('profile')
     async updateProfile(
         @Req() request: Request,
-        @Body() data: { name?: string; email?: string; phone?: string; cep?: string; cpf?: string; crm?: string; especialidade?: string; cargaHoraria?: number },
+        @Body() data: { name?: string; email?: string; phone?: string; cep?: string; cpf?: string; crm?: string; especialidade?: string; cargaHoraria?: number; locaisAtendimento?: string[] },
     ) {
         const token = request.cookies['refresh_token'];
         if (!token) throw new UnauthorizedException('Token não fornecido');

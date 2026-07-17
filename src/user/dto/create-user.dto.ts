@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 import { EnumUserType } from '@prisma/client';
 
 export class CreateUserDto {
@@ -41,4 +41,9 @@ export class CreateUserDto {
     @IsBoolean()
     @IsOptional() // O default é false no schema
     active?: boolean;
+
+    @IsArray()
+    @IsString({ each: true })
+    @IsOptional()
+    locaisAtendimento?: string[];
 }

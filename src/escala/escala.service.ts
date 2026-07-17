@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
 import { CreatePlantaoDto, UpdatePlantaoDto } from './dto/plantao.dto';
 
@@ -9,6 +9,18 @@ const doctorInclude = {
 @Injectable()
 export class EscalaService {
     constructor(private prisma: PrismaService) { }
+
+    /** Usuário cujo nível possui o menu escala-admin. */
+    private isEscalaAdmin(user: any): boolean {
+        return (user?.nivel_acesso?.menus || []).some((m: any) => m?.slug === 'escala-admin');
+    }
+
+    /** Check-in, check-out e devolução só pelo próprio médico do plantão ou por um admin da escala. */
+    private assertCanManageShift(plantao: { doctorId: string | null }, user: any) {
+        if (this.isEscalaAdmin(user)) return;
+        if (plantao.doctorId && plantao.doctorId === user?.idUser) return;
+        throw new ForbiddenException('Apenas o médico do plantão ou o Escala de Plantão Admin podem realizar esta ação.');
+    }
 
     findAll(filter: { from?: string; to?: string; setor?: string; grupoId?: number; deleted?: boolean }) {
         return this.prisma.plantao.findMany({
@@ -75,8 +87,9 @@ export class EscalaService {
     }
 
     /** Devolve um plantão para o mercado (fica Aberto de novo). */
-    async liberar(id: string) {
+    async liberar(id: string, user?: any) {
         const plantao = await this.findOne(id);
+        this.assertCanManageShift(plantao, user);
         if (plantao.status === 'Concluido' || plantao.status === 'Cancelado') {
             throw new BadRequestException('Este plantão não pode ser liberado.');
         }
@@ -126,8 +139,9 @@ export class EscalaService {
         return this.prisma.plantao.update({ where: { id }, data: { deletedAt: null }, include: doctorInclude });
     }
 
-    async checkin(id: string) {
-        await this.findOne(id);
+    async checkin(id: string, user?: any) {
+        const plantao = await this.findOne(id);
+        this.assertCanManageShift(plantao, user);
         return this.prisma.plantao.update({
             where: { id },
             data: { checkinAt: new Date(), status: 'EmAndamento' },
@@ -135,8 +149,9 @@ export class EscalaService {
         });
     }
 
-    async checkout(id: string) {
-        await this.findOne(id);
+    async checkout(id: string, user?: any) {
+        const plantao = await this.findOne(id);
+        this.assertCanManageShift(plantao, user);
         return this.prisma.plantao.update({
             where: { id },
             data: { checkoutAt: new Date(), status: 'Concluido' },

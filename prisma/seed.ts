@@ -27,6 +27,7 @@ const MENUS = [
   // Módulo hospitalar
   { nome: 'Médicos', slug: 'medicos' },
   { nome: 'Escala de Plantão', slug: 'escala' },
+  { nome: 'Escala de Plantão Admin', slug: 'escala-admin' },
   { nome: 'Fila de Atendimento', slug: 'fila' },
   { nome: 'Estoque de Insumos', slug: 'estoque' },
 ];
@@ -58,6 +59,7 @@ const NIVEL_SLUGS: Record<number, string[]> = {
     'grupos',
     'medicos',
     'escala',
+    'escala-admin',
     'fila',
     'estoque',
   ],

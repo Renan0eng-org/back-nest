@@ -27,6 +27,7 @@ export class AppointmentsController {
     @Query('createdFrom') createdFrom?: string,
     @Query('createdTo') createdTo?: string,
     @Query('status') status?: string,
+    @Query('deleted') deleted?: string,
   ) {
     const p = page ? parseInt(page, 10) : undefined;
     const ps = pageSize ? parseInt(pageSize, 10) : undefined;
@@ -39,6 +40,7 @@ export class AppointmentsController {
     if (createdFrom) filters.createdFrom = createdFrom;
     if (createdTo) filters.createdTo = createdTo;
     if (status) filters.status = status;
+    if (deleted) filters.deleted = deleted;
 
     const mergedQuery = { ...query, ...filters };
     return this.service.findAll(mergedQuery, p || ps ? { page: p, pageSize: ps } : undefined as any);
@@ -57,6 +59,7 @@ export class AppointmentsController {
     @Query('createdFrom') createdFrom?: string,
     @Query('createdTo') createdTo?: string,
     @Query('status') status?: string,
+    @Query('deleted') deleted?: string,
   ) {
     const p = page ? parseInt(page, 10) : undefined;
     const ps = pageSize ? parseInt(pageSize, 10) : undefined;
@@ -69,6 +72,7 @@ export class AppointmentsController {
     if (createdFrom) filters.createdFrom = createdFrom;
     if (createdTo) filters.createdTo = createdTo;
     if (status) filters.status = status;
+    if (deleted) filters.deleted = deleted;
 
     const mergedQuery = { ...query, ...filters };
     return this.service.findReferrals(mergedQuery, p || ps ? { page: p, pageSize: ps } : undefined as any);
@@ -92,6 +96,11 @@ export class AppointmentsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.service.remove(id);
+  }
+
+  @Post(':id/restaurar')
+  restore(@Param('id') id: string) {
+    return this.service.restore(id);
   }
 
   // lista os usuarios Profissional

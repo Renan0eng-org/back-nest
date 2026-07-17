@@ -33,11 +33,13 @@ export class FormController {
         @Query('isScreening') isScreening?: string,
         @Query('responsesMin') responsesMin?: string,
         @Query('responsesMax') responsesMax?: string,
+        @Query('deleted') deleted?: string,
     ) {
         const p = page ? parseInt(page, 10) : undefined;
         const ps = pageSize ? parseInt(pageSize, 10) : undefined;
 
         const filters: any = {};
+        if (deleted === 'true') filters.deleted = true;
         if (title) filters.title = title;
         if (description) filters.description = description;
         if (from) filters.from = from;
@@ -93,6 +95,11 @@ export class FormController {
     @Delete(':id')
     delete(@Param('id') id: string) {
         return this.formService.delete(id);
+    }
+
+    @Post(':id/restaurar')
+    restore(@Param('id') id: string) {
+        return this.formService.restore(id);
     }
 
     @Post(':id/activate-screening')
@@ -223,10 +230,11 @@ export class FormController {
         @Query('isScreening') isScreening?: string,
         @Query('scoreMin') scoreMin?: string,
         @Query('scoreMax') scoreMax?: string,
+        @Query('deleted') deleted?: string,
     ) {
         const p = page ? parseInt(page, 10) : undefined;
         const ps = pageSize ? parseInt(pageSize, 10) : undefined;
-        
+
         const filters: any = {};
         if (formTitle) filters.formTitle = formTitle;
         if (patientName) filters.patientName = patientName;
@@ -244,9 +252,16 @@ export class FormController {
             const v = parseInt(scoreMax as any, 10);
             if (!isNaN(v)) filters.scoreMax = v;
         }
+        if (deleted === 'true') filters.deleted = true;
 
         const scope = await this.gruposService.getScopeForUser((request as any).user);
         return this.formService.findAllResponses({ page: p, pageSize: ps, filters, scope });
+    }
+
+    @Post('responses/:responseId/restaurar')
+    @Menu('respostas')
+    restoreResponse(@Param('responseId') responseId: string) {
+        return this.formService.restoreResponse(responseId);
     }
 
     @Get('response/:responseId')

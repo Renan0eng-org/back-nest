@@ -95,9 +95,15 @@ model User {
   cargaHoraria  Int?
   medicoStatus  DoctorStatus?
 
+  // Locais de trabalho/atendimento do profissional (MEDICO/USUARIO)
+  locaisAtendimento String[] @default([])
+
   plantoes            Plantao[]     @relation("PlantaoDoctor")
   queueTicketsPatient QueueTicket[] @relation("QueuePatient")
   queueTicketsDoctor  QueueTicket[] @relation("QueueDoctor")
+
+  examRequestsAsPatient ExamRequest[] @relation("ExamRequestPatient")
+  examRequestsRequested ExamRequest[] @relation("ExamRequestRequestedBy")
 
   @@index([idUser])
   @@index([user_id_create])
@@ -235,6 +241,9 @@ model Response {
   conduct         String?
   assignedToId    String?
 
+  // Soft delete
+  dt_delete DateTime?
+
   answers Answer[]
 
   // Appointments that reference this response (optional)
@@ -271,6 +280,11 @@ enum AppointmentStatus {
   Completo
 }
 
+enum AppointmentModality {
+  Presencial
+  Remoto
+}
+
 model Appointment {
   id               String            @id @default(cuid())
   professionalId   String?
@@ -281,6 +295,18 @@ model Appointment {
   status           AppointmentStatus @default(Pendente)
   notes            String?
   totalScoreAtTime Int?
+
+  // Modalidade da consulta
+  modality   AppointmentModality @default(Presencial)
+  location   String?             // Endereço/unidade (usado quando presencial)
+  meetingUrl String?             // Link da teleconsulta (usado quando remoto)
+
+  // Retorno originado de um atendimento anterior (opcional)
+  originAttendanceId String?
+
+  // Soft delete
+  dt_delete DateTime?
+
   createdAt        DateTime          @default(now())
   updatedAt        DateTime?         @updatedAt
 
@@ -288,8 +314,11 @@ model Appointment {
   doctor   User?     @relation("AppointmentDoctor", fields: [doctorId], references: [idUser])
   patient  User      @relation("AppointmentPatient", fields: [patientId], references: [idUser])
   response Response? @relation(fields: [responseId], references: [idResponse])
-  
+  originAttendance Attendance? @relation("AppointmentOriginAttendance", fields: [originAttendanceId], references: [id])
+
   attendances Attendance[]
+  examRequests ExamRequest[]
+  queueTickets QueueTicket[] @relation("QueueAppointment")
 
   @@index([doctorId])
   @@index([patientId])
@@ -342,7 +371,9 @@ model Attendance {
   prescriptions       AttendancePrescription[]
   attachments         AttendanceAttachment[]
   medicalNotes        MedicalNote[]
-  
+  examRequests        ExamRequest[]
+  returnAppointments  Appointment[]    @relation("AppointmentOriginAttendance")
+
   @@index([appointmentId])
   @@index([patientId])
   @@index([professionalId])
@@ -403,10 +434,52 @@ model AttendanceResponse {
   
   attendance    Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
   response      Response   @relation("AttendanceResponses", fields: [responseId], references: [idResponse], onDelete: Cascade)
-  
+
   @@unique([attendanceId, responseId])
   @@index([attendanceId])
   @@index([responseId])
+}
+
+enum ExamRequestStatus {
+  Pendente // solicitado pelo médico, aguardando o paciente enviar
+  Enviado  // paciente enviou o resultado
+  Avaliado // médico avaliou o resultado
+  Cancelado
+}
+
+/// Exame solicitado pelo médico ao paciente, opcionalmente vinculado ao
+/// atendimento de origem e ao agendamento de retorno onde deve ser entregue.
+/// O resultado é enviado pelo paciente como URL de arquivo (ex.: storage
+/// cifrado); o servidor não guarda o conteúdo clínico em si.
+model ExamRequest {
+  id             String            @id @default(cuid())
+  attendanceId   String?           // atendimento que originou a solicitação
+  appointmentId  String?           // retorno onde o exame deve ser entregue
+  patientId      String
+  requestedById  String?           // profissional solicitante
+
+  name           String            // Ex.: "Raio-X lombar"
+  instructions   String?           // Observação para o laboratório/paciente
+  status         ExamRequestStatus @default(Pendente)
+
+  // Resultado enviado pelo paciente
+  resultUrl      String?           @db.VarChar(512)
+  resultFileName String?
+  resultType     String?           // Ex.: "image/jpeg", "application/pdf"
+  resultAt       DateTime?
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  attendance  Attendance?  @relation(fields: [attendanceId], references: [id], onDelete: SetNull)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  patient     User         @relation("ExamRequestPatient", fields: [patientId], references: [idUser])
+  requestedBy User?        @relation("ExamRequestRequestedBy", fields: [requestedById], references: [idUser])
+
+  @@index([patientId])
+  @@index([appointmentId])
+  @@index([attendanceId])
+  @@index([status])
 }
 
 model ErrorLog {
@@ -762,27 +835,31 @@ enum QueueStatus {
 
 /// Senha/ticket da fila de atendimento.
 model QueueTicket {
-  id          String        @id @default(cuid())
-  grupoId     Int?
-  code        String // ex: A-102
-  patientId   String?
-  patientName String? // fallback quando não há cadastro
-  setor       String
-  priority    QueuePriority @default(Normal)
-  status      QueueStatus   @default(Aguardando)
-  doctorId    String? // User id do médico que assumiu
-  issuedAt    DateTime      @default(now())
-  calledAt    DateTime?
-  confirmedAt DateTime?
-  closedAt    DateTime?
+  id            String        @id @default(cuid())
+  grupoId       Int?
+  code          String // ex: A-102
+  patientId     String?
+  patientName   String? // fallback quando não há cadastro
+  setor         String
+  priority      QueuePriority @default(Normal)
+  status        QueueStatus   @default(Aguardando)
+  doctorId      String? // User id do médico que assumiu
+  appointmentId String? // agendamento de origem (opcional — senha pode ser avulsa)
+  issuedAt      DateTime      @default(now())
+  calledAt      DateTime?
+  confirmedAt   DateTime?
+  closedAt      DateTime?
+  dt_delete     DateTime? // soft delete
 
-  patient User?  @relation("QueuePatient", fields: [patientId], references: [idUser])
-  doctor  User?  @relation("QueueDoctor", fields: [doctorId], references: [idUser])
-  grupo   Grupo? @relation("QueueGrupo", fields: [grupoId], references: [idGrupo])
+  patient     User?        @relation("QueuePatient", fields: [patientId], references: [idUser])
+  doctor      User?        @relation("QueueDoctor", fields: [doctorId], references: [idUser])
+  grupo       Grupo?       @relation("QueueGrupo", fields: [grupoId], references: [idGrupo])
+  appointment Appointment? @relation("QueueAppointment", fields: [appointmentId], references: [id])
 
   @@index([grupoId])
   @@index([status])
   @@index([issuedAt])
+  @@index([appointmentId])
 }
 
 /// Insumo de estoque hospitalar.

@@ -19,7 +19,8 @@ const userSelect = Prisma.validator<Prisma.UserSelect>()({
     active: true,
     nivelAcessoId: true,
     type: true,
-    nivel_acesso: { 
+    locaisAtendimento: true,
+    nivel_acesso: {
         select: {
             idNivelAcesso: true,
             nome: true,

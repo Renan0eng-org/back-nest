@@ -6,6 +6,7 @@ import { CallTicketDto, CreateTicketDto } from './dto/fila.dto';
 const ticketInclude = {
     patient: { select: { idUser: true, name: true } },
     doctor: { select: { idUser: true, name: true } },
+    appointment: { select: { id: true, scheduledAt: true, status: true, modality: true } },
 };
 
 // Prefixo da senha por prioridade
@@ -15,20 +16,23 @@ const PREFIX: Record<string, string> = { Normal: 'N', Preferencial: 'P', Urgenci
 export class FilaService {
     constructor(private prisma: PrismaService) { }
 
-    findAll(status?: QueueStatus, grupoId?: number) {
+    findAll(status?: QueueStatus, grupoId?: number, deleted = false) {
         return this.prisma.queueTicket.findMany({
             where: {
                 status: status || undefined,
                 grupoId: grupoId ?? undefined,
                 issuedAt: { gte: startOfToday() },
+                dt_delete: deleted ? { not: null } : null,
             },
             include: ticketInclude,
-            orderBy: [{ priority: 'desc' }, { issuedAt: 'asc' }],
+            orderBy: deleted
+                ? [{ dt_delete: 'desc' }]
+                : [{ priority: 'desc' }, { issuedAt: 'asc' }],
         });
     }
 
     async stats(grupoId?: number) {
-        const where = { grupoId: grupoId ?? undefined, issuedAt: { gte: startOfToday() } };
+        const where = { grupoId: grupoId ?? undefined, issuedAt: { gte: startOfToday() }, dt_delete: null };
         const [aguardando, chamado, emAtendimento, concluidos] = await Promise.all([
             this.prisma.queueTicket.count({ where: { ...where, status: 'Aguardando' } }),
             this.prisma.queueTicket.count({ where: { ...where, status: 'Chamado' } }),
@@ -50,7 +54,36 @@ export class FilaService {
     }
 
     async create(dto: CreateTicketDto) {
-        if (!dto.patientId && !dto.patientName) {
+        let patientId = dto.patientId ?? null;
+        let patientName = dto.patientName ?? null;
+        let doctorId: string | null = null;
+
+        // Senha originada de um agendamento: herda paciente e médico.
+        if (dto.appointmentId) {
+            const appointment = await this.prisma.appointment.findUnique({
+                where: { id: dto.appointmentId },
+                include: { patient: { select: { idUser: true, name: true } } },
+            });
+            if (!appointment || appointment.dt_delete) {
+                throw new NotFoundException('Agendamento não encontrado.');
+            }
+            const existing = await this.prisma.queueTicket.findFirst({
+                where: {
+                    appointmentId: dto.appointmentId,
+                    status: { in: ['Aguardando', 'Chamado', 'EmAtendimento'] },
+                    issuedAt: { gte: startOfToday() },
+                    dt_delete: null,
+                },
+            });
+            if (existing) {
+                throw new BadRequestException(`Este agendamento já possui a senha ${existing.code} na fila.`);
+            }
+            patientId = patientId ?? appointment.patientId;
+            patientName = patientName ?? appointment.patient?.name ?? null;
+            doctorId = appointment.doctorId ?? null;
+        }
+
+        if (!patientId && !patientName) {
             throw new BadRequestException('Informe o paciente (cadastro ou nome).');
         }
         const priority = dto.priority ?? 'Normal';
@@ -61,8 +94,10 @@ export class FilaService {
                 code,
                 setor: dto.setor,
                 priority,
-                patientId: dto.patientId ?? null,
-                patientName: dto.patientName ?? null,
+                patientId,
+                patientName,
+                doctorId,
+                appointmentId: dto.appointmentId ?? null,
                 grupoId: dto.grupoId ?? null,
             },
             include: ticketInclude,
@@ -112,6 +147,49 @@ export class FilaService {
         return this.prisma.queueTicket.update({
             where: { id },
             data: { status: 'Faltou', closedAt: new Date() },
+            include: ticketInclude,
+        });
+    }
+
+    /** Soft delete de uma senha. */
+    async remove(id: string) {
+        const ticket = await this.get(id);
+        if (ticket.dt_delete) throw new BadRequestException('Esta senha já está excluída.');
+        return this.prisma.queueTicket.update({
+            where: { id },
+            data: { dt_delete: new Date() },
+            include: ticketInclude,
+        });
+    }
+
+    /**
+     * Restaura uma senha excluída. Se a senha veio de um agendamento e esse
+     * agendamento já possui outra senha ativa, a restauração é bloqueada.
+     */
+    async restore(id: string) {
+        const ticket = await this.prisma.queueTicket.findUnique({ where: { id } });
+        if (!ticket) throw new NotFoundException('Senha não encontrada.');
+        if (!ticket.dt_delete) throw new BadRequestException('Esta senha não está excluída.');
+
+        if (ticket.appointmentId) {
+            const active = await this.prisma.queueTicket.findFirst({
+                where: {
+                    appointmentId: ticket.appointmentId,
+                    id: { not: id },
+                    status: { in: ['Aguardando', 'Chamado', 'EmAtendimento'] },
+                    dt_delete: null,
+                },
+            });
+            if (active) {
+                throw new BadRequestException(
+                    `Não é possível restaurar: o agendamento já possui a senha ativa ${active.code}.`,
+                );
+            }
+        }
+
+        return this.prisma.queueTicket.update({
+            where: { id },
+            data: { dt_delete: null },
             include: ticketInclude,
         });
     }

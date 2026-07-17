@@ -161,7 +161,7 @@ export class FormService {
     async findAll(opts?: { page?: number; pageSize?: number; filters?: any; scope?: { visibleUserIds: string[]; groupIds: number[] } | null }) {
         const filters = opts?.filters;
 
-        const where: any = { active: true, ...this.buildScopeWhere(opts?.scope) };
+        const where: any = { active: filters?.deleted === true ? false : true, ...this.buildScopeWhere(opts?.scope) };
 
         if (filters) {
             if (filters.title) {
@@ -592,6 +592,18 @@ export class FormService {
         });
     }
 
+    async restore(formId: string) {
+        const form = await this.prisma.form.findFirst({ where: { idForm: formId, active: false } });
+        if (!form) throw new NotFoundException('Formulário excluído não encontrado');
+
+        await this.prisma.form.update({
+            where: { idForm: formId },
+            data: { active: true },
+        });
+
+        return { success: true, message: 'Formulário restaurado.' };
+    }
+
     async setScreening(idForm: string, value: boolean) {
         const form = await this.prisma.form.findUnique({ where: { idForm, active: true } });
         if (!form) throw new NotFoundException('Formulário não encontrado');
@@ -842,44 +854,34 @@ export class FormService {
         userId: string,
         responseId: string,
     ) {
-        return this.prisma.$transaction(async (tx) => {
-            const existingResponse = await tx.response.findFirst({
-                where: {
-                    idResponse: responseId,
-                },
-            });
-
-            if (!existingResponse) {
-                throw new NotFoundException('Resposta não encontrada');
-            }
-
-            // Caso exista um agendamento associado a essa resposta, cancelar e desvincular
-            const existingAppt = await (tx as any).appointment.findFirst({ where: { responseId: responseId } });
-            if (existingAppt) {
-                await (tx as any).appointment.update({
-                    where: { id: existingAppt.id },
-                    data: {
-                        status: 'Cancelado',
-                        responseId: null,
-                    },
-                });
-            }
-
-            // remover respostas (answers) primeiro, depois a response
-            await tx.answer.deleteMany({
-                where: {
-                    responseId: responseId,
-                },
-            });
-
-            await tx.response.delete({
-                where: {
-                    idResponse: responseId,
-                },
-            });
-
-            return { success: true };
+        const existingResponse = await this.prisma.response.findFirst({
+            where: { idResponse: responseId },
         });
+
+        if (!existingResponse) {
+            throw new NotFoundException('Resposta não encontrada');
+        }
+
+        await this.prisma.response.update({
+            where: { idResponse: responseId },
+            data: { dt_delete: new Date() },
+        });
+
+        return { success: true };
+    }
+
+    async restoreResponse(responseId: string) {
+        const response = await this.prisma.response.findFirst({
+            where: { idResponse: responseId, dt_delete: { not: null } },
+        });
+        if (!response) throw new NotFoundException('Resposta excluída não encontrada');
+
+        await this.prisma.response.update({
+            where: { idResponse: responseId },
+            data: { dt_delete: null },
+        });
+
+        return { success: true, message: 'Resposta restaurada.' };
     }
 
     async findResponses(formId: string) {
@@ -1020,6 +1022,12 @@ export class FormService {
     async findAllResponses(opts?: { page?: number; pageSize?: number; filters?: any; scope?: { visibleUserIds: string[]; groupIds: number[] } | null }) {
         const filters = opts?.filters;
         const baseWhere: any = { form: { active: true, ...this.buildScopeWhere(opts?.scope) } };
+
+        if (filters?.deleted === true) {
+            baseWhere.dt_delete = { not: null };
+        } else {
+            baseWhere.dt_delete = null;
+        }
 
         // Apply filters to the where clause
         if (filters) {
@@ -1249,9 +1257,6 @@ export class FormService {
         const user = await this.prisma.user.findUnique({
             where: { idUser: userId },
             select: {
-                idUser: true,
-                name: true,
-                email: true,
                 fromAssigned: {
                     where: { active: true },
                     select: {
@@ -1260,13 +1265,29 @@ export class FormService {
                         description: true,
                         createdAt: true,
                         updatedAt: true,
+                        responses: {
+                            where: { userId },
+                            select: { idResponse: true, submittedAt: true },
+                            orderBy: { submittedAt: 'desc' as const },
+                            take: 1,
+                        },
                     },
                 },
-
             },
         });
 
-        return user;
+        if (!user) return null;
+
+        return user.fromAssigned.map(f => ({
+            id: f.idForm,
+            title: f.title,
+            description: f.description,
+            createdAt: f.createdAt,
+            updatedAt: f.updatedAt,
+            responseId: f.responses[0]?.idResponse ?? null,
+            submittedAt: f.responses[0]?.submittedAt ?? null,
+            answered: f.responses.length > 0,
+        }));
     }
 
     async getUsersToAssign(filters?: {

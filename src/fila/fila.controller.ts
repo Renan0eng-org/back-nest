@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { QueueStatus } from '@prisma/client';
 import { Menu } from 'src/auth/menu.decorator';
 import { RefreshTokenGuard } from 'src/auth/refresh-token.guard';
@@ -12,8 +12,12 @@ export class FilaController {
     constructor(private readonly filaService: FilaService) { }
 
     @Get()
-    findAll(@Query('status') status?: QueueStatus, @Query('grupoId') grupoId?: string) {
-        return this.filaService.findAll(status, grupoId ? Number(grupoId) : undefined);
+    findAll(
+        @Query('status') status?: QueueStatus,
+        @Query('grupoId') grupoId?: string,
+        @Query('deleted') deleted?: string,
+    ) {
+        return this.filaService.findAll(status, grupoId ? Number(grupoId) : undefined, deleted === 'true');
     }
 
     @Get('stats')
@@ -51,5 +55,15 @@ export class FilaController {
     @Post(':id/faltou')
     miss(@Param('id') id: string) {
         return this.filaService.miss(id);
+    }
+
+    @Delete(':id')
+    remove(@Param('id') id: string) {
+        return this.filaService.remove(id);
+    }
+
+    @Post(':id/restaurar')
+    restore(@Param('id') id: string) {
+        return this.filaService.restore(id);
     }
 }

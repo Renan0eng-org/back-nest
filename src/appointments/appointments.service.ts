@@ -1,12 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { NotificationHelperService } from '../notifications/notification-helper.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 
 @Injectable()
 export class AppointmentsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private readonly notifications: NotificationHelperService,
+  ) { }
 
   async create(dto: CreateAppointmentDto) {
     const scheduledAt = new Date(dto.scheduledAt);
@@ -56,6 +60,11 @@ export class AppointmentsService {
           scheduledAt,
           notes: dto.notes ?? null,
           totalScoreAtTime,
+          modality: dto.modality ?? 'Presencial',
+          // Local só faz sentido no presencial; link só no remoto.
+          location: dto.modality === 'Remoto' ? null : (dto.location ?? null),
+          meetingUrl: dto.modality === 'Remoto' ? (dto.meetingUrl ?? null) : null,
+          originAttendanceId: dto.originAttendanceId ?? null,
         },
         include: { doctor: true, patient: true, response: true },
       });
@@ -63,11 +72,28 @@ export class AppointmentsService {
       return appt;
     });
 
+    // Notifica o paciente sobre o agendamento (best-effort, não bloqueia).
+    try {
+      const dateLabel = scheduledAt.toLocaleString('pt-BR', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      });
+      await this.notifications.notifyAppointment(created.patientId, dateLabel, created.id);
+    } catch {
+      // push é opcional; ignora falhas.
+    }
+
     return created;
   }
 
   async findAll(query: any, opts?: { page?: number; pageSize?: number }) {
     const where: any = {};
+
+    if (query?.deleted === 'true') {
+      where.dt_delete = { not: null };
+    } else {
+      where.dt_delete = null;
+    }
 
     if (query?.patientId) where.patientId = query.patientId;
 
@@ -93,7 +119,7 @@ export class AppointmentsService {
       } else {
         throw new BadRequestException(`Status inválido. Valores aceitos: ${validStatuses.join(', ')}`);
       }
-    } else {
+    } else if (query?.deleted !== 'true') {
       where.status = { not: AppointmentStatus.Cancelado };
     }
 
@@ -178,6 +204,12 @@ export class AppointmentsService {
   async findReferrals(query: any, opts?: { page?: number; pageSize?: number }) {
     const where: any = {};
 
+    if (query?.deleted === 'true') {
+      where.dt_delete = { not: null };
+    } else {
+      where.dt_delete = null;
+    }
+
     if (query.patientId) where.patientId = query.patientId;
 
     // Filter by patient name using relationship
@@ -202,7 +234,7 @@ export class AppointmentsService {
       } else {
         throw new BadRequestException(`Status inválido. Valores aceitos: ${validStatuses.join(', ')}`);
       }
-    } else {
+    } else if (query?.deleted !== 'true') {
       where.status = { not: AppointmentStatus.Cancelado };
     }
 
@@ -299,6 +331,20 @@ export class AppointmentsService {
     }
     if (dto.notes !== undefined) data.notes = dto.notes;
     if (dto.status !== undefined) data.status = dto.status;
+    if (dto.modality !== undefined) {
+      data.modality = dto.modality;
+      // Mantém coerência local/link conforme a modalidade.
+      if (dto.modality === 'Remoto') {
+        data.location = null;
+        if (dto.meetingUrl !== undefined) data.meetingUrl = dto.meetingUrl;
+      } else {
+        data.meetingUrl = null;
+        if (dto.location !== undefined) data.location = dto.location;
+      }
+    } else {
+      if (dto.location !== undefined) data.location = dto.location;
+      if (dto.meetingUrl !== undefined) data.meetingUrl = dto.meetingUrl;
+    }
 
     return this.prisma.appointment.update({ where: { id }, data });
   }
@@ -315,7 +361,23 @@ export class AppointmentsService {
   }
 
   async remove(id: string) {
-    return this.prisma.appointment.update({ where: { id }, data: { status: AppointmentStatus.Cancelado } });
+    return this.prisma.appointment.update({
+      where: { id },
+      data: { status: AppointmentStatus.Cancelado, dt_delete: new Date() },
+    });
+  }
+
+  async restore(id: string) {
+    const appt = await this.prisma.appointment.findFirst({
+      where: { id, dt_delete: { not: null } },
+    });
+    if (!appt) throw new NotFoundException('Agendamento excluído não encontrado');
+
+    return this.prisma.appointment.update({
+      where: { id },
+      data: { dt_delete: null, status: AppointmentStatus.Pendente },
+      include: { doctor: true, patient: true, response: true },
+    });
   }
 
   async findProfessionalUsers(opts?: { page?: number; pageSize?: number }) {

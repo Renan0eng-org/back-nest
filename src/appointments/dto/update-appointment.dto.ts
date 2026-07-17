@@ -1,5 +1,5 @@
 import { IsEnum, IsISO8601, IsOptional, IsString } from 'class-validator';
-import { AppointmentStatus } from '@prisma/client';
+import { AppointmentModality, AppointmentStatus } from '@prisma/client';
 
 export class UpdateAppointmentDto {
   @IsOptional()
@@ -13,4 +13,18 @@ export class UpdateAppointmentDto {
   @IsOptional()
   @IsEnum(AppointmentStatus)
   status?: AppointmentStatus;
+
+  @IsOptional()
+  @IsEnum(AppointmentModality, {
+    message: 'modality deve ser Presencial ou Remoto',
+  })
+  modality?: AppointmentModality;
+
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  @IsOptional()
+  @IsString()
+  meetingUrl?: string;
 }

@@ -48,6 +48,7 @@ export class AttendancesController {
     @Query('pageSize') pageSize?: string,
     @Query('patientName') patientName?: string,
     @Query('professionalName') professionalName?: string,
+    @Query('professionalId') professionalId?: string,
     @Query('status') status?: string,
     @Query('attendanceFrom') attendanceFrom?: string,
     @Query('attendanceTo') attendanceTo?: string,
@@ -61,6 +62,7 @@ export class AttendancesController {
     const filters: any = {};
     if (patientName) filters.patientName = patientName;
     if (professionalName) filters.professionalName = professionalName;
+    if (professionalId) filters.professionalId = professionalId;
     if (status) filters.status = status;
     if (attendanceFrom) filters.attendanceFrom = attendanceFrom;
     if (attendanceTo) filters.attendanceTo = attendanceTo;

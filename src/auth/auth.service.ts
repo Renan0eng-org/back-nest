@@ -28,8 +28,21 @@ export class AuthService {
         return user;
     }
 
-    async createUserMobile(data: Prisma.UserCreateInput) {
-        const user = await this.createUser(data);
+    async createUserMobile(data: any) {
+        const { grupoId, ...userData } = data;
+
+        if (grupoId && userData.type === 'PACIENTE') {
+            userData.grupoPacienteId = grupoId;
+        }
+
+        const user = await this.createUser(userData);
+
+        if (grupoId) {
+            await this.prisma.grupo_Membro.create({
+                data: { grupoId: Number(grupoId), userId: user.idUser },
+            }).catch(() => {});
+        }
+
         const { password: _, ...userWithoutPassword } = user;
         const access_token = this.jwtService.sign({
             sub: user.idUser,
@@ -38,6 +51,13 @@ export class AuthService {
             preApproval: true,
         });
         return { access_token, user: { ...userWithoutPassword, active: false } };
+    }
+
+    async findAllGrupos() {
+        return this.prisma.grupo.findMany({
+            select: { idGrupo: true, nome: true },
+            orderBy: { nome: 'asc' },
+        });
     }
 
     async findUserByIdBasic(id: string) {
@@ -292,7 +312,7 @@ export class AuthService {
         return rest;
     }
 
-    async updateProfile(userId: string, data: { name?: string; email?: string; phone?: string; cep?: string; cpf?: string; crm?: string; especialidade?: string; cargaHoraria?: number }) {
+    async updateProfile(userId: string, data: { name?: string; email?: string; phone?: string; cep?: string; cpf?: string; crm?: string; especialidade?: string; cargaHoraria?: number; locaisAtendimento?: string[] }) {
         const user = await this.prisma.user.findUnique({ where: { idUser: userId } });
         if (!user) throw new UnauthorizedException('Usuário não encontrado');
 
@@ -318,6 +338,11 @@ export class AuthService {
             if (typeof data.crm !== 'undefined') updateData.crm = data.crm;
             if (typeof data.especialidade !== 'undefined') updateData.especialidade = data.especialidade;
             if (typeof data.cargaHoraria !== 'undefined') updateData.cargaHoraria = data.cargaHoraria;
+        }
+
+        // Locais de atendimento — aplicam a profissionais (MEDICO/USUARIO)
+        if ((user.type === 'MEDICO' || user.type === 'USUARIO') && Array.isArray(data.locaisAtendimento)) {
+            updateData.locaisAtendimento = data.locaisAtendimento;
         }
 
         const updated = await this.prisma.user.update({

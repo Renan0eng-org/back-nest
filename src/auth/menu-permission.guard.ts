@@ -42,8 +42,23 @@ export class MenuPermissionGuard implements CanActivate {
 
     if (!token) throw new UnauthorizedException('Token não fornecido.');
 
-    // Validate token and fetch user with nivel_acesso + menus
     const validated = await this.authService.validateToken(token, { type: tokenType });
+
+    // Mobile Bearer tokens: authenticate and attach user, skip menu permissions.
+    // Mobile users (PACIENTE/MEDICO) don't have nivel_acesso menus —
+    // their data access is scoped per-user/per-group in the service layer.
+    if (tokenType === 'access') {
+      let user: any;
+      try {
+        user = await this.authService.findUserById(validated.dataToken.sub);
+      } catch {
+        user = await this.authService.findUserByIdBasic(validated.dataToken.sub);
+      }
+      if (!req.user) req.user = user;
+      return true;
+    }
+
+    // Web refresh token: full permission check
     const user = await this.authService.findUserById(validated.dataToken.sub);
 
     const menus = user?.nivel_acesso?.menus || [];

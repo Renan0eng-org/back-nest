@@ -14,6 +14,10 @@ export class CreateTicketDto {
     @IsOptional()
     patientName?: string;
 
+    @IsString()
+    @IsOptional()
+    appointmentId?: string;
+
     @IsEnum(QueuePriority)
     @IsOptional()
     priority?: QueuePriority;

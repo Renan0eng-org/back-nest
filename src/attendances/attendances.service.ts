@@ -157,6 +157,11 @@ export class AttendancesService {
   async findAll(query: any, opts?: { page?: number; pageSize?: number }) {
     const where: any = {};
 
+    // Filter by professional id (escopo "meus atendimentos" do médico)
+    if (query?.professionalId) {
+      where.professionalId = query.professionalId;
+    }
+
     // Filter by patient name
     if (query?.patientName) {
       where.patient = {
@@ -278,6 +283,10 @@ export class AttendancesService {
         prescriptions: true,
         attachments: true,
         creator: true,
+        examRequests: {
+          include: { requestedBy: true },
+          orderBy: { createdAt: 'desc' },
+        },
         medicalNotes: { orderBy: { order: 'asc' } },
         assignedForms: {
           include: {
