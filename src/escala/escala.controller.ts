@@ -27,36 +27,40 @@ export class EscalaController {
         return this.escalaService.findOne(id);
     }
 
+    @Get(':id/historico')
+    history(@Param('id') id: string) {
+        return this.escalaService.history(id);
+    }
+
     @Post()
     @Menu('escala-admin')
     @UsePipes(new ValidationPipe({ whitelist: true }))
-    create(@Body() dto: CreatePlantaoDto) {
-        return this.escalaService.create(dto);
+    create(@Body() dto: CreatePlantaoDto, @Req() req: Request) {
+        return this.escalaService.create(dto, req.user);
     }
 
     @Put(':id')
     @Menu('escala-admin')
     @UsePipes(new ValidationPipe({ whitelist: true }))
-    update(@Param('id') id: string, @Body() dto: UpdatePlantaoDto) {
-        return this.escalaService.update(id, dto);
+    update(@Param('id') id: string, @Body() dto: UpdatePlantaoDto, @Req() req: Request) {
+        return this.escalaService.update(id, dto, req.user);
     }
 
     @Delete(':id')
     @Menu('escala-admin')
-    remove(@Param('id') id: string) {
-        return this.escalaService.remove(id);
+    remove(@Param('id') id: string, @Req() req: Request) {
+        return this.escalaService.remove(id, req.user);
     }
 
     @Post(':id/restaurar')
     @Menu('escala-admin')
-    restore(@Param('id') id: string) {
-        return this.escalaService.restore(id);
+    restore(@Param('id') id: string, @Req() req: Request) {
+        return this.escalaService.restore(id, req.user);
     }
 
     @Post(':id/pegar')
     pegar(@Param('id') id: string, @Req() req: Request) {
-        const userId = (req.user as any)?.idUser;
-        return this.escalaService.pegar(id, userId);
+        return this.escalaService.pegar(id, req.user);
     }
 
     @Post(':id/liberar')

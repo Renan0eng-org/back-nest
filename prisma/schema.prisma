@@ -99,6 +99,7 @@ model User {
   locaisAtendimento String[] @default([])
 
   plantoes            Plantao[]     @relation("PlantaoDoctor")
+  plantaoEvents       PlantaoEvent[] @relation("PlantaoEventActor")
   queueTicketsPatient QueueTicket[] @relation("QueuePatient")
   queueTicketsDoctor  QueueTicket[] @relation("QueueDoctor")
 
@@ -811,11 +812,41 @@ model Plantao {
 
   doctor User?  @relation("PlantaoDoctor", fields: [doctorId], references: [idUser], onDelete: SetNull)
   grupo  Grupo? @relation("PlantaoGrupo", fields: [grupoId], references: [idGrupo])
+  events PlantaoEvent[]
 
   @@index([doctorId])
   @@index([grupoId])
   @@index([startsAt])
   @@index([status])
+}
+
+/// Evento de histórico de um plantão (auditoria para a timeline).
+model PlantaoEvent {
+  id        String           @id @default(cuid())
+  plantaoId String
+  type      PlantaoEventType
+  actorId   String?
+  actorName String? // snapshot do nome de quem realizou
+  actorRole String? // snapshot do papel (ex.: "Admin", "Médico")
+  detail    String? // contexto extra (ex.: nome do médico atribuído)
+  createdAt DateTime         @default(now())
+
+  plantao Plantao @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
+  actor   User?   @relation("PlantaoEventActor", fields: [actorId], references: [idUser], onDelete: SetNull)
+
+  @@index([plantaoId])
+}
+
+enum PlantaoEventType {
+  Criado
+  Atribuido
+  Pegou
+  Devolvido
+  Editado
+  CheckIn
+  CheckOut
+  Removido
+  Restaurado
 }
 
 enum QueuePriority {
