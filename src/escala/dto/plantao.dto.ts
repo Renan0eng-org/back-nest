@@ -22,6 +22,11 @@ export class CreatePlantaoDto {
 }
 
 export class UpdatePlantaoDto {
+    // Reatribuir médico (string vazia = devolver ao mercado / deixar aberto).
+    @IsString()
+    @IsOptional()
+    doctorId?: string;
+
     @IsString()
     @IsOptional()
     setor?: string;

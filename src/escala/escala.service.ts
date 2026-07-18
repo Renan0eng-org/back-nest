@@ -100,10 +100,12 @@ export class EscalaService {
         });
     }
 
-    private async assertNoOverlap(doctorId: string, startsAt: string, endsAt: string) {
+    private async assertNoOverlap(doctorId: string, startsAt: string, endsAt: string, excludeId?: string) {
         const overlap = await this.prisma.plantao.findFirst({
             where: {
+                id: excludeId ? { not: excludeId } : undefined,
                 doctorId,
+                deletedAt: null,
                 status: { notIn: ['Cancelado', 'Aberto'] },
                 startsAt: { lt: new Date(endsAt) },
                 endsAt: { gt: new Date(startsAt) },
@@ -113,15 +115,38 @@ export class EscalaService {
     }
 
     async update(id: string, dto: UpdatePlantaoDto) {
-        await this.findOne(id);
+        const current = await this.findOne(id);
+
+        const startsAt = dto.startsAt ? new Date(dto.startsAt) : current.startsAt;
+        const endsAt = dto.endsAt ? new Date(dto.endsAt) : current.endsAt;
+        if (endsAt <= startsAt) {
+            throw new BadRequestException('O fim do plantão deve ser depois do início.');
+        }
+
+        const data: any = {
+            setor: dto.setor,
+            startsAt: dto.startsAt ? startsAt : undefined,
+            endsAt: dto.endsAt ? endsAt : undefined,
+            grupoId: dto.grupoId,
+        };
+
+        // Reatribuição de médico (só quando doctorId vem no payload — ex.: modal de edição).
+        // O move/resize por arraste não envia doctorId e mantém o médico atual.
+        if (dto.doctorId !== undefined) {
+            const newDoctorId = dto.doctorId || null;
+            if (newDoctorId) {
+                const doctor = await this.prisma.user.findFirst({ where: { idUser: newDoctorId, type: 'MEDICO' } });
+                if (!doctor) throw new BadRequestException('Médico não encontrado.');
+                await this.assertNoOverlap(newDoctorId, startsAt.toISOString(), endsAt.toISOString(), id);
+            }
+            data.doctorId = newDoctorId;
+            if (!newDoctorId) data.status = 'Aberto';
+            else if (current.status === 'Aberto') data.status = 'Agendado';
+        }
+
         return this.prisma.plantao.update({
             where: { id },
-            data: {
-                setor: dto.setor,
-                startsAt: dto.startsAt ? new Date(dto.startsAt) : undefined,
-                endsAt: dto.endsAt ? new Date(dto.endsAt) : undefined,
-                grupoId: dto.grupoId,
-            },
+            data,
             include: doctorInclude,
         });
     }
