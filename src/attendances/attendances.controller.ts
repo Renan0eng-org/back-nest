@@ -10,11 +10,13 @@ import {
     Request,
 } from '@nestjs/common';
 import { Menu } from 'src/auth/menu.decorator';
+import { AttendanceAiService } from './attendance-ai.service';
 import { AttendancesService } from './attendances.service';
 import { AssignFormsDto } from './dto/assign-forms.dto';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { CreateFromAppointmentDto } from './dto/create-from-appointment.dto';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
+import { ImproveNoteDto } from './dto/improve-note.dto';
 import { LinkResponseDto } from './dto/link-response.dto';
 import { UpdateAttendanceStatusDto } from './dto/update-attendance-status.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
@@ -23,7 +25,20 @@ import { UpdatePrescriptionDto } from './dto/update-prescription.dto';
 @Controller('attendances')
 @Menu('atendimento')
 export class AttendancesController {
-  constructor(private readonly service: AttendancesService) {}
+  constructor(
+    private readonly service: AttendancesService,
+    private readonly aiService: AttendanceAiService,
+  ) {}
+
+  // ==================== IA (melhoria de notas) ====================
+  // Nível de acesso próprio: "atendimento-ia" (sobrepõe o @Menu da classe).
+  @Post('ai/improve')
+  @Menu('atendimento-ia')
+  improveNote(@Body() dto: ImproveNoteDto) {
+    return this.aiService
+      .improve({ text: dto.text, scope: dto.scope, format: dto.format, noteTitle: dto.noteTitle })
+      .then((result) => ({ result }));
+  }
 
   @Post()
   create(@Body() dto: CreateAttendanceDto, @Request() req?: any) {
